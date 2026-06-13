@@ -40,6 +40,10 @@ _DEFAULT_TIER_MAP = {
     "gpt-4.1": "gpt-4.1",
 }
 _MAX_FRAMES = 10  # cap frames sent to bound cost/context; sampled evenly across the clip
+# The judge returns a per-principle reason for every rubric principle (10+), a critique,
+# a worst-first `issues` array, and `nameable_decisions`. That JSON is long — 1500 tokens
+# truncated it mid-object, so the response failed to parse and the signal silently skipped.
+_MAX_OUTPUT_TOKENS = 4096
 
 
 @register_signal
@@ -109,6 +113,7 @@ class JudgeSignal:
                 "ai_pitfalls_evidence": evidence,
                 "critique": parsed.get("critique", ""),
                 "per_principle": per_principle,
+                "issues": _clean_issues(parsed.get("issues")),
                 "nameable_decisions": parsed.get("nameable_decisions", []),
             },
         )
@@ -203,14 +208,40 @@ def _build_prompt(brief: str, rubric: list[UXPrinciple], n_frames: int,
     keys = ", ".join(f'"{p.key}"' for p in rubric)
     lines += [
         "",
+        "Then PINPOINT the concrete problems. Your feedback is read by the agent that will edit "
+        "this exact page in the next round, so every issue must be locatable and fixable WITHOUT "
+        "guessing. For each issue:",
+        "  - `where`: name the specific on-screen element or region — quote its visible text if it "
+        "    has any (e.g. the \"Play Free Demo\" button, the hero headline, the top-right starfield). "
+        "    If it moves/animates, say at which point (entrance / settled state).",
+        "  - `problem`: what is actually wrong or broken, and QUOTE THE OBSERVED STATE — describe "
+        "    what you literally see (the approximate current size, color, position, weight, or "
+        "    spacing) so the fix has a baseline (overlapping text, clipped element, illegible "
+        "    low-contrast label, CTA sitting outside the focal area, a second element competing "
+        "    for attention, layout breaking at this viewport, etc.). Do NOT write vague notes "
+        "    like 'improve hierarchy' or 'needs polish'.",
+        "  - `principle`: the rubric key it hurts most.",
+        "  - `fix`: the single concrete change, phrased as observed → target — which element, "
+        "    which CSS property, and a specific value, not a direction (e.g. 'raise the CTA label "
+        "    from ~18px to ~36px / 600 weight and give it a solid #1b5e20 fill', NOT 'make the CTA "
+        "    stronger'). The next agent must be able to apply it without guessing a number.",
+        "  - `severity`: \"high\" (broken / blocks the brief), \"medium\", or \"low\" (polish).",
+        "List the issues worst-first. If the design is genuinely clean, return an empty `issues` list "
+        "rather than inventing problems. In each principle's `reason`, when the score is below 7, name "
+        "the specific offending element — do not give a generic justification.",
+        "",
         "Respond with ONLY a single JSON object, no prose before or after, in this exact shape:",
         "{",
         '  "scores": {',
         f"    // one entry per principle key: {keys}",
-        '    "<key>": {"score": <0-10 number>, "reason": "<one short sentence>"}',
+        '    "<key>": {"score": <0-10 number>, "reason": "<one short sentence; if <7, name the offending element>"}',
         "  },",
         '  "critique": "<two sentences: the single biggest strength and the single biggest weakness>",',
-        '  "nameable_decisions": ["<concrete, actionable change the generating agent could make>", "..."]',
+        '  "issues": [',
+        '    {"where": "<specific element/region, quote its text>", "problem": "<what is observably wrong>",',
+        '     "principle": "<rubric key>", "fix": "<the one concrete change to make>", "severity": "high|medium|low"}',
+        "  ],",
+        '  "nameable_decisions": ["<concrete, located, actionable change the generating agent could make>", "..."]',
         "}",
     ]
     return "\n".join(lines)
@@ -233,6 +264,10 @@ def _call_vision_model(model: str, prompt: str, frames: list[Path],
 
 def _call_anthropic(model: str, prompt: str, frames: list[Path],
                     references: list[Path]) -> str:
+    # Pick up AutoDesign/.env so the key works from any entry point (e.g. a bare
+    # `python -m pipeline.benchmark` that doesn't load .env itself), mirroring _nemotron.
+    from pipeline.envfile import ensure_loaded
+    ensure_loaded()
     try:
         import anthropic
     except ImportError as exc:
@@ -257,7 +292,7 @@ def _call_anthropic(model: str, prompt: str, frames: list[Path],
     client = anthropic.Anthropic()
     resp = client.messages.create(
         model=model,
-        max_tokens=1500,
+        max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[{"role": "user", "content": content}],
     )
     return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
@@ -265,6 +300,8 @@ def _call_anthropic(model: str, prompt: str, frames: list[Path],
 
 def _call_openai(model: str, prompt: str, frames: list[Path],
                  references: list[Path]) -> str:
+    from pipeline.envfile import ensure_loaded
+    ensure_loaded()
     try:
         from openai import OpenAI
     except ImportError as exc:
@@ -286,7 +323,7 @@ def _call_openai(model: str, prompt: str, frames: list[Path],
     client = OpenAI()
     resp = client.chat.completions.create(
         model=model,
-        max_tokens=1500,
+        max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[{"role": "user", "content": content}],
     )
     return resp.choices[0].message.content or ""
@@ -315,6 +352,40 @@ def _first_brace_block(text: str) -> str | None:
     start = text.find("{")
     end = text.rfind("}")
     return text[start : end + 1] if 0 <= start < end else None
+
+
+_SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def _clean_issues(issues) -> list[dict]:
+    """Normalize the judge's `issues` array: keep well-formed entries, sort worst-first.
+
+    Each kept issue carries the located, actionable feedback the next-round generator
+    needs (where / problem / fix). Tolerant of a missing or malformed field — a dropped
+    issue is better than a crash in the loop.
+    """
+    if not isinstance(issues, list):
+        return []
+    cleaned: list[dict] = []
+    for it in issues:
+        if not isinstance(it, dict):
+            continue
+        where = str(it.get("where", "")).strip()
+        problem = str(it.get("problem", "")).strip()
+        if not where and not problem:
+            continue  # an issue with neither a location nor a description is useless
+        sev = str(it.get("severity", "medium")).strip().lower()
+        if sev not in _SEVERITY_RANK:
+            sev = "medium"
+        cleaned.append({
+            "where": where,
+            "problem": problem,
+            "principle": str(it.get("principle", "")).strip(),
+            "fix": str(it.get("fix", "")).strip(),
+            "severity": sev,
+        })
+    cleaned.sort(key=lambda i: _SEVERITY_RANK[i["severity"]])
+    return cleaned
 
 
 def _combine(rubric: list[UXPrinciple], scores: dict) -> tuple[float, dict]:

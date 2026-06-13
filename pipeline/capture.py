@@ -191,3 +191,41 @@ def capture(
         frames_dir=frames_dir, frames=frames, video=video_path,
         viewport=viewport, skipped=None,
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI: capture one candidate dir's `index.html` using `config.capture`.
+
+    Exists so a generation can be captured as N independent subprocesses (see
+    `pipeline/batch.py`) — Playwright's sync API is not safe to drive from
+    multiple threads in one process, so process-level fan-out is how we
+    parallelize capture across candidates.
+    """
+    import argparse
+
+    from pipeline.config import load_config
+
+    parser = argparse.ArgumentParser(description="Capture one AutoDesign candidate to frames.")
+    parser.add_argument("--candidate", required=True, help="Candidate dir containing index.html.")
+    parser.add_argument("--config", default="autodesign.md", help="Path to autodesign.md.")
+    args = parser.parse_args(argv)
+
+    cfg = load_config(args.config)
+    cap = cfg.get("capture", {})
+    out = Path(args.candidate)
+    res = capture(
+        html_path=out / "index.html",
+        out_dir=out,
+        viewport=tuple(cap.get("viewport", (1280, 800))),
+        animation_seconds=float(cap.get("animation_seconds", 0.0)),
+        keyframes=cap.get("keyframes"),
+    )
+    if res.skipped:
+        print(f"capture skipped for {out.name}: {res.skipped}")
+    else:
+        print(f"captured {len(res.frames)} frame(s) for {out.name}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

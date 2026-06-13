@@ -170,11 +170,10 @@ def _print_verdict(records: list[dict]) -> None:
 
 
 def _load_dotenv(path: str | Path) -> None:
-    """Load a `.env` into os.environ (shared impl in config.load_dotenv).
-
-    Kept here as the rank CLI's entry point; delegates so there is one loader.
-    """
-    from pipeline.config import load_dotenv
+    """Populate os.environ from a `.env` (KEY=VALUE lines), not overwriting set keys.
+    Thin wrapper over the shared loader so `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in
+    AutoDesign/.env flow to the signals automatically."""
+    from pipeline.envfile import load_dotenv
     load_dotenv(path)
 
 

@@ -24,6 +24,14 @@ You will be told the candidate directory. Inside it:
   - `weights` (after renormalization).
   - `explanations`: one plain-English sentence per subscore.
   - `metrics`: raw distribution stats.
+  And at `raw.vlm_judge.details`:
+  - `issues`: a worst-first list of pinpointed problems the VLM judge found,
+    each `{where, problem, principle, fix, severity}`. These are already
+    located and actionable — treat the `high`-severity ones as near-mandatory
+    to carry into your `nameable_decisions` (re-verify each against the frames
+    and `index.html` first; drop any you cannot confirm visually).
+  - `per_principle`: each `{score, weight, reason}` per UX principle.
+  - `critique`: the judge's one biggest-strength / biggest-weakness summary.
 
 You will also be told the design brief.
 
@@ -34,7 +42,7 @@ object has exactly two keys:
 
 ```json
 {
-  "critique": "one or two sentences describing what is wrong with this candidate, grounded in the lowest-scoring subscore",
+  "critique": "one or two sentences naming the most important things to fix this round, drawn from BOTH the VLM judge's issues and the lowest saliency subscore",
   "nameable_decisions": [
     "first imperative change",
     "second imperative change",
@@ -43,8 +51,16 @@ object has exactly two keys:
 }
 ```
 
+`nameable_decisions` must NEVER be empty when a problem exists — an empty list
+means the next generator gets no guidance and re-emits the same page. Every
+confirmed `high`/`medium` VLM issue becomes a decision, plus your saliency fixes.
+
 # How to choose what to change
 
+0. Start from `raw.vlm_judge.details.issues` (worst-first). Each is already a
+   located `{where, problem, fix}` — confirm it against the frames + `index.html`,
+   then fold the confirmed `high`/`medium` ones into `nameable_decisions` verbatim
+   or sharpened. These are your strongest, most specific leads.
 1. Find the lowest subscore and read its `explanation`. That's your target.
 2. Read the heatmap (saliency.png) and compare with where you *expected*
    the eye to go (the focal_bbox: see config in the brief).

@@ -33,10 +33,18 @@ winner. The dashboard reads `.autodesign/runs/<id>/` to render the run.
 
 ## Setup
 
+> **CRITICAL — always use the project venv.** The scoring signals live ONLY in
+> `.venv` (`anthropic` for `vlm_judge`, `deepgaze_pytorch` for `saliency`). Bare
+> `python` resolves to a different interpreter (e.g. miniconda) that lacks them,
+> so every signal silently skips and **every score comes back `null`** — the
+> dashboard then shows no scores. Run every command below as `.venv/bin/python …`
+> (shell state does not persist between calls, so `source .venv/bin/activate`
+> will NOT carry over — you must prefix each command explicitly).
+
 1. **Load config + create the run dir.** Run from the repo root:
 
    ```bash
-   python -c "
+   .venv/bin/python -c "
    import json
    from pipeline.config import load_config
    from pipeline.artifacts import new_run_id, run_dir
@@ -72,7 +80,7 @@ For each `i` in `0..loop.initial_candidates - 1`:
 **a. Create the candidate dir.**
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pipeline.artifacts import ensure_cand_dir
 print(ensure_cand_dir('<run_id>', 0, <i>))
 "
@@ -98,7 +106,7 @@ tool calls) — they are independent.
 **c. Capture frames** for each candidate:
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pathlib import Path
 from pipeline.capture import capture
 from pipeline.config import load_config
@@ -122,7 +130,7 @@ playwright install chromium`).
 **d. Score** each candidate:
 
 ```bash
-python -m pipeline.benchmark --candidate <run_dir>/gen-000/cand-NN \
+.venv/bin/python -m pipeline.benchmark --candidate <run_dir>/gen-000/cand-NN \
     --references --run-dir <run_dir>
 ```
 
@@ -146,7 +154,7 @@ that the score itself was uninformative.
 Write `<run_dir>/gen-000/winner.json`:
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pipeline.artifacts import winner_path, write_winner
 write_winner(winner_path('<run_id>', 0), 'cand-NN', <combined_or_None>)
 "
@@ -155,7 +163,7 @@ write_winner(winner_path('<run_id>', 0), 'cand-NN', <combined_or_None>)
 **f. Append lineage.**
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pipeline.artifacts import lineage_path, append_lineage
 append_lineage(lineage_path('<run_id>'), {
     'generation': 0,
@@ -185,16 +193,32 @@ It MUST return JSON:
 { "critique": "<one or two sentences>", "nameable_decisions": ["<imperative>", "..."] }
 ```
 
+**1b. Extract the previous winner's concrete feedback.** The most actionable
+signal is the VLM judge's pinpointed `issues` (located `where/problem/fix`),
+which live nested in `scores.json`. Pull them out deterministically so they
+cannot be dropped:
+
+```bash
+.venv/bin/python -m pipeline.feedback --candidate <run_dir>/gen-(g-1)/<winner>
+```
+
+This prints a markdown brief: the judge's worst-first issues, the critic's
+nameable decisions, the weakest rubric principles, and a one-line verdict. Keep
+this text — it is the spec for this generation.
+
 **2. Generate the refinement.** Create the candidate dir, then invoke the
-**`generator`** subagent in edit mode with the previous html plus the critique
-+ `nameable_decisions`. It writes a single new html at:
+**`generator`** subagent in edit mode. Pass it the previous `index.html`, the
+critic's `critique` + `nameable_decisions` from step 1, AND the full feedback
+brief from step 1b. Tell it explicitly: address EVERY issue in the brief, make a
+visible substantive change for each, and do NOT return a near-identical page. It
+writes a single new html at:
 
 ```
 <run_dir>/gen-GGG/cand-00/index.html
 ```
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pipeline.artifacts import ensure_cand_dir
 print(ensure_cand_dir('<run_id>', <g>, 0))
 "
@@ -210,7 +234,7 @@ step 1).
 **5. Write the winner.json** (always `cand-00` for a single-candidate gen):
 
 ```bash
-python -c "
+.venv/bin/python -c "
 from pipeline.artifacts import winner_path, write_winner
 write_winner(winner_path('<run_id>', <g>), 'cand-00', <combined_or_None>)
 "
@@ -253,7 +277,7 @@ When the loop ends:
    - The number of generations run and the final `combined`.
    - Markdown link to `final.html`.
    - The dashboard URL: `http://127.0.0.1:8765/api/run/<run_id>` (remind the
-     user they can start the dashboard with `python dashboard/serve.py`).
+     user they can start the dashboard with `.venv/bin/python dashboard/serve.py`).
    - One sentence on whether the loop hit `target_score`, converged, or was
      capped at `iterations`.
 

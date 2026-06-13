@@ -6,12 +6,14 @@ Adding a new signal:
   3. Add the matching key + weight to the `criteria:` block in `autodesign.md`.
 
 Nothing else changes.
+
+NOTE: this `brain` branch includes brain_judge (heavy TRIBE-v2 deps). `main` does not.
 """
 
+from pipeline.signals import brain_judge  # noqa: F401
+from pipeline.signals import prompt_consistency  # noqa: F401
 from pipeline.signals import saliency  # noqa: F401
+from pipeline.signals import stress_test  # noqa: F401
 from pipeline.signals import vlmjudge  # noqa: F401
 
-# brain_judge lives on the `brain` branch (heavy TRIBE-v2 deps) — not imported here so
-# `main` stays laptop-light. Checkout `brain` on a bigger machine to run it.
-
-__all__ = ["saliency", "vlmjudge"]
+__all__ = ["brain_judge", "prompt_consistency", "saliency", "stress_test", "vlmjudge"]

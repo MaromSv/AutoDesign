@@ -8,6 +8,11 @@ playwright
 opencv-contrib-python
 trueskill
 # VLM judge signal (pipeline/signals/vlmjudge.py). anthropic is the default judge
-# (models.judge: opus); openai is only needed if you set a gpt-* judge tier.
+# (models.judge: opus). openai is needed for gpt-* judge tiers AND for the Nemotron
+# signals (stress_test, prompt_consistency) — Nebius Token Factory is OpenAI-compatible.
 anthropic
 openai
+# Saliency signal (pipeline/signals/saliency.py): DeepGaze IIE/III on PyTorch.
+torch
+torchvision
+deepgaze_pytorch @ git+https://github.com/matthias-k/DeepGaze.git

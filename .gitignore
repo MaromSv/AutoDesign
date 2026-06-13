@@ -230,8 +230,11 @@ external/
 deepeval/
 vllm_judge/
 GEBench/
-# Large / regenerable data + media (rebuilt via pipeline.brain scripts)
-data/
+# Large / regenerable data + media — but KEEP the curated URL lists (good.txt/bad.txt)
+data/*
+!data/brain
+data/brain/*
+!data/brain/*.txt
 *.webm
 *.mp4
 *.joblib

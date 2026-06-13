@@ -87,8 +87,24 @@ Techniques to reach for:
 
 # On critique-driven edits
 
-Read the critique and `nameable_decisions` carefully. Each named decision is
-something you should change in this iteration — apply them, and update the
-`<!-- hypothesis: ... -->` comment to say what you're testing this time.
-Refinements should INTENSIFY what's working and replace what isn't — they
+You will be given the previous winner's HTML plus a **feedback brief** (from
+`pipeline/feedback.py`): the VLM judge's pinpointed issues (each a located
+`where / problem / FIX`), the critic's `nameable_decisions`, and the weakest
+rubric principles. This brief is the spec for your edit.
+
+- **Address EVERY issue in the brief.** Each issue names a specific element and
+  a concrete fix — apply that fix to that element. Work the `high`-severity
+  issues first, then medium, then low. Do not skip one because it seems minor.
+- **Make a visible, substantive change for each.** The most common failure here
+  is returning a near-identical page that nudges a few pixels — that wastes the
+  whole round and usually *lowers* the score. If you find yourself making only
+  cosmetic tweaks, you have misread the brief: go bigger.
+- **Do not regress what already works.** The brief lists the previous strengths
+  in its verdict; preserve them. Changing one thing should not break the
+  hierarchy, reading order, or focal placement that was already scoring well.
+- Update the `<!-- hypothesis: ... -->` comment to name, in one sentence, the
+  specific issues you fixed this round (e.g. "darkened net-worth value + real
+  trend chart + tighter CTA microcopy").
+
+Refinements should INTENSIFY what's working and decisively fix what isn't — they
 should not be timid copy-edits of the previous winner.
