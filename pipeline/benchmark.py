@@ -21,7 +21,7 @@ from typing import Iterable
 
 # Ensure all signal modules import and register before we read the registry.
 import pipeline.signals  # noqa: F401
-from pipeline.config import criteria_weights, load_config
+from pipeline.config import criteria_weights, load_config, load_dotenv
 from pipeline.context import CandidateContext, SignalResult
 from pipeline.registry import get_signals
 
@@ -181,8 +181,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Run root where references are cached/shared across candidates. "
              "Defaults to the candidate dir (per-candidate acquisition).",
     )
+    parser.add_argument(
+        "--env",
+        default=".env",
+        help="Path to a .env file with ANTHROPIC_API_KEY (default: ./.env). Loaded so "
+             "the vlm_judge picks up the key without a manual export.",
+    )
     args = parser.parse_args(argv)
 
+    load_dotenv(args.env)
     config = load_config(args.config)
     brief = (config.get("brief") or "").strip()
 

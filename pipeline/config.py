@@ -8,8 +8,30 @@ assignments, capture settings — comes from that dict.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
+
+
+def load_dotenv(path: str | Path = ".env") -> None:
+    """Populate os.environ from a `.env` file (KEY=VALUE lines) without overwriting
+    anything already set. Minimal — no quoting/expansion magic, no extra dependency.
+
+    Lets `ANTHROPIC_API_KEY=...` in the project's .env flow to the vlm_judge / research
+    agent automatically, so the /autodesign loop and rank don't need a manual `export`.
+    No-op if the file is missing.
+    """
+    p = Path(path)
+    if not p.exists():
+        return
+    for line in p.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#") or "=" not in s:
+            continue
+        key, _, val = s.partition("=")
+        key, val = key.strip(), val.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = val
 
 
 _DEFAULT_CONFIG_PATH = Path("autodesign.md")
