@@ -11,4 +11,7 @@ Nothing else changes.
 from pipeline.signals import saliency  # noqa: F401
 from pipeline.signals import vlmjudge  # noqa: F401
 
+# brain_judge lives on the `brain` branch (heavy TRIBE-v2 deps) — not imported here so
+# `main` stays laptop-light. Checkout `brain` on a bigger machine to run it.
+
 __all__ = ["saliency", "vlmjudge"]

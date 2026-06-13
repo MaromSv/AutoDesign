@@ -223,3 +223,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---- AutoDesign: vendored external repos (each its own git clone; set up per machine) ----
+# (gitignore forbids inline comments — keep patterns on their own lines)
+external/
+deepeval/
+vllm_judge/
+GEBench/
+# Large / regenerable data + media (rebuilt via pipeline.brain scripts)
+data/
+*.webm
+*.mp4
+*.joblib
+*.npz
