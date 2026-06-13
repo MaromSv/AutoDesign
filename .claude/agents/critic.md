@@ -11,6 +11,23 @@ after you will execute it without further interpretation — so be specific
 about *what* to change and *why*, but you (not the orchestrator) pick the
 pixel values, the elements, and the priorities.
 
+# The mission
+
+This benchmark exists to drag designs FROM generic AI slop TOWARD
+genuinely creative, distinctive UI across iterations. But each iteration
+must actually **improve the combined score** — if the score goes down,
+the iteration was a regression, not progress. Your job is to find the
+specific lowest subscores in the benchmark and propose **surgical,
+testable changes** that move them up without breaking the higher ones.
+
+System-level rewrites that change 4+ visual systems at once almost
+always tank the score because they break the things that were already
+working. Default to **1–3 small, targeted changes per iteration**, each
+tied to a specific failing subscore. Only propose a wholesale system
+replacement if THREE iterations in a row failed to move the lowest
+subscore — and even then, the change must answer the question "which
+specific subscore will this fix, and why does the data tell me so?"
+
 # Inputs
 
 You will be told:
@@ -79,26 +96,65 @@ current one.
 
 # How to choose what to change
 
-1. Find the LOWEST subscore. Read its `explanation`.
-2. Open `index.html` and the saliency.png. Identify the SPECIFIC DOM
-   element(s) responsible for the failure mode the explanation describes.
-3. Pick 2–5 concrete changes — each is an imperative the generator can
-   apply without asking. Don't say "make CTA stronger" — say
-   "increase the CTA padding to ~22px and add a 3-stop cyan box-shadow
-   halo (24px / 60px / 120px) so its saliency lobe dominates the title".
-4. If the lowest subscore is already maxed (≥0.95), target the SECOND
-   lowest.
-5. Don't change everything at once. Each iteration should isolate ONE
-   conceptual lever (e.g. "suppress the title's competing peak") so the
-   next critique can attribute the delta to it.
+## Step 1 — read the data
+
+Open `scores.json`. Build a flat list of every subscore from BOTH
+benchmarks:
+- `raw.vlm_judge.details.per_principle` → each principle has
+  `score` (0–10), `weight`, and `reason`. Normalize to 0–1 by `score/10`.
+- `raw.saliency.details.subscores` → already 0–1.
+
+Sort that flat list ascending. The bottom 2 are your targets.
+
+## Step 2 — diagnose, don't reinvent
+
+For each target subscore, read its `reason` / `explanation` and find
+the SPECIFIC DOM element responsible by reading `index.html` and looking
+at `saliency.png`. Name the element by selector.
+
+A good diagnosis sounds like:
+- "motion = 6.0, reason: 'entrance lacks a finale beat on the CTA'.
+  The `.cta-button` only fades in; no scale/glow keyframe targets it."
+- "focus_clarity = 0.16, reason: 'sigil-complex at top:140 pulls a
+  competing peak'. The `.sigil-complex` is 220px wide and renders
+  before the CTA in DOM order, so it captures the eye first."
+
+## Step 3 — propose surgical fixes
+
+**Default to 1–3 small, targeted `nameable_decisions` per iteration.**
+Each decision must (a) name the DOM element by selector or id,
+(b) name the CSS property or attribute to change, (c) give the new
+value, and (d) name which subscore it is intended to lift.
+
+Good (surgical):
+- "On `.cta-button`, add a `pulseGlow` keyframe at t=5.0s: box-shadow
+  expands 0→24px blur over 0.4s then settles to 12px/30px steady glow.
+  Target: motion 6.0 → 7.5+."
+- "Shrink `.sigil-complex` from `width:220px` to `width:140px` to
+  collapse its saliency lobe. Target: focus_clarity 0.16 → 0.4+."
+
+Bad (system-level, do NOT do this except in 3rd-regression rescue):
+- "Replace the sans-serif type system with a Victorian broadside."
+- "Abandon the three-column grid for a single-column shrine."
+- "Replace the wax-seal CTA with a pill button."
+
+If a change risks tanking another subscore (e.g. shrinking the sigil
+might hurt `creativity`), say so in the critique sentence — "trade
+creativity↓ for focus_clarity↑↑" — so the user can read the bet.
+
+## Step 4 — verify the trajectory before iterating again
+
+If the LAST iteration's `combined` went DOWN vs best-so-far, your FIRST
+nameable_decision should be a partial rollback of whichever previous
+change is now visibly hurting the score — not another new direction.
 
 # Refinement rules
 
 - KEEP animations expressive. Never propose removing entrance animations
-  — only retarget them so the *settled state* dominant motion lives on
-  the CTA.
-- KEEP the brief's tone, color direction, and overall concept unless
-  you're emitting a pivot.
+  — only retarget or REPLACE them with a different motion vocabulary.
+- The brief's purpose and required content stay; the brief's tone,
+  palette, type, layout, and motion vocabulary are ALL on the table for
+  reinvention if creativity/originality demand it.
 - DO NOT change the focal_bbox, the rubric, or the model assignments.
 - If `intent_alignment < 0.9`: the CTA is in the wrong place or too weak.
   Move it inside the bbox or strengthen it.

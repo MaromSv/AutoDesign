@@ -240,9 +240,16 @@ def build_run_manifest(run_id: str, runs_root: Path = RUNS_ROOT) -> dict | None:
     final_path = run_dir / "final.html"
     final_url = _url_for(final_path) if final_path.exists() else None
 
+    # Optional per-run config snapshot — currently carries the capture viewport so
+    # the dashboard can size the stage (mobile portrait vs. desktop landscape).
+    # Older runs without this file fall back to the default landscape size.
+    meta = _read_json(run_dir / "run_meta.json") or {}
+    viewport = meta.get("viewport") or [1280, 800]
+
     return {
         "run": run_id,
         "brief": brief,
+        "viewport": viewport,
         "lineage": lineage,
         "final": final_url,
         "generations": generations,

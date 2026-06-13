@@ -137,7 +137,13 @@
       display: flex; flex-direction: column; gap: 12px;
     }
     .stage {
-      position: relative; aspect-ratio: 1280 / 800;
+      position: relative;
+      /* aspect-ratio + max-width come from --vw/--vh, set per-run from
+         manifest.viewport in JS. Portrait phone runs end up tall and narrow;
+         landscape landing-page runs end up wide. */
+      aspect-ratio: var(--vw, 1280) / var(--vh, 800);
+      max-width: min(100%, calc(var(--vw, 1280) * 1px));
+      margin-inline: auto;
       background: #fff; border: 1px solid var(--rule);
       overflow: hidden;
       box-shadow: 0 18px 40px -22px rgba(28,24,20,0.35);
@@ -190,7 +196,9 @@
     }
     .stage .frame-layer {
       position: absolute; top: 0; left: 0;
-      width: 1280px; height: 800px;
+      /* Native viewport pixel size — JS sets these from manifest.viewport
+         and adjusts the scale transform so the page fills the stage box. */
+      width: var(--vw, 1280px); height: var(--vh, 800px);
       border: 0; background: transparent;
       transform-origin: top left;
       pointer-events: none; z-index: 1;
@@ -415,9 +423,8 @@
     /* ============================================================ */
     /* PAGE 2 — METRICS                                              */
     /* ============================================================ */
-    .metrics-head { padding: 56px 48px 24px; max-width: 1500px; margin-inline: auto; }
     .metrics-grid {
-      max-width: 1500px; margin-inline: auto; padding: 0 48px 48px;
+      max-width: 1500px; margin-inline: auto; padding: 56px 48px 48px;
       display: grid; gap: 48px; grid-template-columns: 1fr;
     }
     .chart-card {
@@ -527,15 +534,30 @@ const STATE = {
 };
 
 const SUB_LABELS = {
-  intent_alignment:   "intent alignment",
-  focus_clarity:      "focus clarity",
-  reading_order:      "reading order",
-  animation_focus:    "animation focus",
+  // saliency subscores
+  intent_alignment:        "intent alignment",
+  focus_clarity:           "focus clarity",
+  reading_order:           "reading order",
+  animation_focus:         "animation focus",
+  // vlm_judge UX principles — the rubric currently in _ui_rubric.py
+  creativity:              "creativity & distinctiveness",
+  motion:                  "motion & animation",
+  brief_adherence:         "brief adherence",
+  visual_hierarchy:        "visual hierarchy",
+  color_contrast:          "color & contrast",
+  typography:              "typography",
+  layout_spacing:          "layout & spacing",
+  consistency:             "consistency",
+  affordance_clarity:      "affordance & clarity",
+  // conditional vlm_judge principles
+  originality:             "originality vs. peers",
+  ai_pitfalls:             "ai-slop avoidance",
   // legacy keys (left in so historical runs still pretty-print)
-  hero_pull:          "hero pull",
-  focal_dominance:    "focal dominance",
-  composition_spread: "spread",
-  scan_rhythm:        "scan rhythm",
+  polish_distinctiveness:  "polish & distinctiveness",
+  hero_pull:               "hero pull",
+  focal_dominance:         "focal dominance",
+  composition_spread:      "spread",
+  scan_rhythm:             "scan rhythm",
 };
 
 // ============================================================
@@ -656,11 +678,23 @@ function buildStageShell(gen) {
   stage.appendChild(STATE.stageSal);
   stage.appendChild(STATE.stagePath);
 
+  // Apply the run's viewport to the stage as CSS vars, so aspect-ratio +
+  // frame-layer width/height all derive from manifest.viewport rather than
+  // a hardcoded 1280×800. Defaults to landscape if the manifest is older.
+  const [vw, vh] = STATE.manifest?.viewport && STATE.manifest.viewport.length === 2
+    ? STATE.manifest.viewport
+    : [1280, 800];
+  stage.style.setProperty("--vw", `${vw}`);
+  stage.style.setProperty("--vh", `${vh}`);
+  // The frame-layer needs px units, not bare numbers, for width/height.
+  STATE.stageFrame.style.width = `${vw}px`;
+  STATE.stageFrame.style.height = `${vh}px`;
+
   if (STATE.stageRO) { STATE.stageRO.disconnect(); }
   STATE.stageRO = new ResizeObserver(entries => {
     for (const e of entries) {
       const w = e.contentRect.width;
-      if (w > 0) STATE.stageFrame.style.transform = `scale(${w / 1280})`;
+      if (w > 0) STATE.stageFrame.style.transform = `scale(${w / vw})`;
     }
   });
   STATE.stageRO.observe(stage);
@@ -875,11 +909,13 @@ function paintCriteria(gen) {
     const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
     const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
     const why = explanationFor(cand, c);
+    // Source label intentionally omitted — the dashboard now presents one
+    // flat rubric, not a saliency-vs-vlm_judge split. Whatever computes
+    // each row is an engine detail, not user-facing UX.
     host.appendChild(el("div", { class: "crit" },
       el("div", { class: "k" }, prettyKey(c.key)),
       el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
       el("div", { class: `d delta ${dcls}` }, dtxt),
-      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
       why ? el("div", { class: "why" }, why) : null,
     ));
   }
@@ -991,13 +1027,6 @@ function renderMetrics() {
   const gens = m.generations;
   const main = document.getElementById("main");
   main.innerHTML = "";
-
-  main.appendChild(el("section", { class: "metrics-head" },
-    el("div", { class: "eyebrow" }, m.brief || "AutoDesign run"),
-    el("h1", { class: "display" }, "the loop, in numbers."),
-    el("p", { class: "body-lead" },
-      "Every criterion plotted across generations. Sub-scores are 0–1; combined is 0–10."),
-  ));
 
   const combined = combinedSeries(gens);
   const cur = combined[combined.length - 1];

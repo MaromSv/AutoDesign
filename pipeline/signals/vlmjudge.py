@@ -39,7 +39,7 @@ _DEFAULT_TIER_MAP = {
     "gpt-4o": "gpt-4o",
     "gpt-4.1": "gpt-4.1",
 }
-_MAX_FRAMES = 10  # cap frames sent to bound cost/context; sampled evenly across the clip
+_MAX_FRAMES = 5  # cap frames sent to bound cost/context; sampled evenly across the clip
 
 
 @register_signal
@@ -100,6 +100,14 @@ class JudgeSignal:
             )
 
         score10, per_principle = _combine(rubric, parsed["scores"])
+        # Re-shape per_principle into the (subscores / weights / explanations)
+        # contract `serve.py::_flat_criteria` reads from `details`. Result:
+        # every UX principle becomes its own row in the dashboard's criterion
+        # strip alongside the saliency subscores — one flat list, no
+        # "from saliency" / "from vlm_judge" grouping.
+        subscores = {k: round(v["score"] / 10.0, 4) for k, v in per_principle.items()}
+        weights_out = {k: v["weight"] for k, v in per_principle.items()}
+        explanations = {k: v.get("reason", "") for k, v in per_principle.items()}
         return SignalResult(
             score=score10,
             details={
@@ -108,6 +116,11 @@ class JudgeSignal:
                 "n_references": len(references),
                 "ai_pitfalls_evidence": evidence,
                 "critique": parsed.get("critique", ""),
+                # Decomposed shape the dashboard reads:
+                "subscores": subscores,
+                "weights": weights_out,
+                "explanations": explanations,
+                # Nested shape kept for older clients / debug:
                 "per_principle": per_principle,
                 "nameable_decisions": parsed.get("nameable_decisions", []),
             },
@@ -150,7 +163,7 @@ def _originality_principle(topic: str) -> UXPrinciple:
     """
     where = f"similar {topic} products / competitors" if topic else "similar products / competitors"
     return UXPrinciple(
-        key="originality", name="Originality vs. Similar Products", weight=2.0,
+        key="originality", name="Originality vs. Similar Products", weight=3.0,
         evaluation_steps=[
             f"The images labeled REFERENCE are real, currently-deployed {where} serving the "
             "same use case. The frames labeled CANDIDATE are the design under review.",
