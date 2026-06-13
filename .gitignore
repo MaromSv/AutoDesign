@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AutoDesign saliency experiment artifacts
+experiments/screenshots/
+experiments/outputs/
+experiments/cache/

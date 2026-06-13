@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lattice — Plan engineering work the way it actually happens</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #0f1115;
+    --muted: #5b6373;
+    --line: #ececef;
+    --accent: #ff4d2e;
+    --soft: #f6f6f7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+    font-family: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+
+  nav { display:flex; align-items:center; justify-content:space-between; padding: 18px 32px;
+    border-bottom: 1px solid var(--line); }
+  nav .left { display:flex; align-items:center; gap: 36px; }
+  nav .logo { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+  nav ul { list-style:none; display:flex; gap: 22px; margin:0; padding:0; font-size: 14px; color: var(--muted); }
+  nav .right { display:flex; gap: 10px; align-items:center; }
+  .link-muted { color: var(--muted); font-size: 14px; text-decoration: none; }
+  .btn { font-size: 14px; font-weight: 500; padding: 9px 16px; border-radius: 8px;
+    border: 1px solid var(--fg); background: var(--fg); color: white; cursor: pointer; }
+
+  /* Hero: asymmetric. Left = message + ONE primary CTA. Right = product preview. */
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 64px; align-items: center;
+    padding: 96px 0 80px; }
+  .eyebrow { font-size: 13px; color: var(--accent); font-weight: 600; letter-spacing: 0.02em;
+    text-transform: uppercase; margin-bottom: 18px; }
+  h1 { font-size: 56px; line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 22px; font-weight: 600; max-width: 540px; }
+  .lede { font-size: 18px; color: var(--muted); margin: 0 0 32px; max-width: 480px; }
+  .cta-primary { display:inline-flex; align-items:center; gap: 10px;
+    background: var(--accent); color: white; padding: 14px 22px; border-radius: 10px;
+    font-weight: 600; font-size: 15px; border: none; cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,0.04); }
+  .cta-secondary { color: var(--muted); font-size: 14px; margin-left: 18px; text-decoration: none; }
+
+  /* Product preview tile — visually distinct, single focal element. */
+  .preview { background: var(--soft); border: 1px solid var(--line); border-radius: 14px;
+    aspect-ratio: 4 / 3; padding: 22px; display:flex; flex-direction:column; gap:14px; }
+  .pv-row { display:flex; justify-content:space-between; align-items:center;
+    font-size: 12px; color: var(--muted); }
+  .pv-task { background: white; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; display:flex; align-items:center; gap: 12px; }
+  .pv-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
+  .pv-title { font-size: 13px; font-weight: 500; }
+  .pv-meta { margin-left:auto; font-size: 12px; color: var(--muted); }
+
+  /* Trust strip — small, low contrast, NOT competing with hero. */
+  .trust { padding: 12px 0 80px; }
+  .trust .label { font-size: 12px; color: var(--muted); text-align:center; margin-bottom: 18px;
+    letter-spacing: 0.06em; text-transform: uppercase; }
+  .trust .logos { display:flex; justify-content:center; gap: 56px; opacity: 0.55;
+    font-size: 14px; color: var(--fg); font-weight: 500; }
+
+  /* Sectioned content with clear hierarchy (smaller than hero). */
+  .section { padding: 64px 0; border-top: 1px solid var(--line); }
+  .section h2 { font-size: 32px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 12px; font-weight: 600; max-width: 600px; }
+  .section p.intro { font-size: 16px; color: var(--muted); margin: 0 0 36px; max-width: 560px; }
+
+  footer { padding: 40px 0; text-align: left; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+  <nav>
+    <div class="left">
+      <div class="logo">Lattice</div>
+      <ul>
+        <li>Product</li>
+        <li>Method</li>
+        <li>Customers</li>
+        <li>Pricing</li>
+      </ul>
+    </div>
+    <div class="right">
+      <a class="link-muted" href="#">Sign in</a>
+      <button class="btn">Start free trial</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">For engineering teams</div>
+        <h1>Plan engineering work the way it actually happens.</h1>
+        <p class="lede">Lattice connects roadmap to commits, so you stop guessing what's blocked and what's shipping this week.</p>
+        <button class="cta-primary">Start free trial →</button>
+        <a class="cta-secondary" href="#">Watch the 2-minute tour</a>
+      </div>
+      <div class="preview" aria-hidden="true">
+        <div class="pv-row"><span>Sprint 24 · This week</span><span>4 / 7</span></div>
+        <div class="pv-task"><span class="pv-dot"></span><span class="pv-title">Migrate auth middleware to JWT</span><span class="pv-meta">In review</span></div>
+        <div class="pv-task"><span class="pv-dot" style="background:#9aa0b4"></span><span class="pv-title">Add idempotency keys to /payments</span><span class="pv-meta">Blocked</span></div>
+        <div class="pv-task"><span class="pv-dot" style="background:#22c55e"></span><span class="pv-title">Backfill user_audit_log</span><span class="pv-meta">Done</span></div>
+        <div class="pv-task"><span class="pv-dot" style="background:#9aa0b4"></span><span class="pv-title">Investigate p99 spike on read replica</span><span class="pv-meta">Open</span></div>
+      </div>
+    </section>
+
+    <section class="trust">
+      <div class="label">Trusted by engineering teams at</div>
+      <div class="logos"><span>Notion</span><span>Vercel</span><span>Linear</span><span>Supabase</span><span>Modal</span></div>
+    </section>
+
+    <section class="section">
+      <h2>Roadmap meets reality.</h2>
+      <p class="intro">Every issue is linked to the branches, PRs, and deploys that touch it. No more standup archaeology.</p>
+    </section>
+  </div>
+
+  <div class="container">
+    <footer>© 2026 Lattice — built in Berlin & SF.</footer>
+  </div>
+</body>
+</html>

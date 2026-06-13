@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fluxion — Transform Your Workflow with AI</title>
+<style>
+  :root {
+    --bg: #0b0b14;
+    --fg: #e9eaf1;
+    --muted: #9aa0b4;
+    --accent1: #7c5cff;
+    --accent2: #2fd4ff;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  body {
+    background:
+      radial-gradient(800px 500px at 15% -10%, rgba(124,92,255,0.35), transparent 60%),
+      radial-gradient(700px 500px at 90% 10%, rgba(47,212,255,0.25), transparent 60%),
+      var(--bg);
+  }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+  nav { display:flex; align-items:center; justify-content:space-between; padding: 22px 28px; }
+  nav .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 20px;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  nav ul { list-style:none; display:flex; gap: 28px; margin:0; padding:0; font-size:14px; color: var(--muted); }
+  nav .actions { display:flex; gap:10px; }
+  .btn { padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--fg); cursor:pointer; }
+  .btn.primary { background: linear-gradient(90deg, var(--accent1), var(--accent2)); border: none; color: white; }
+  .btn.ghost { background: transparent; }
+
+  .hero { text-align: center; padding: 96px 24px 64px; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding: 6px 14px;
+    border:1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--muted); margin-bottom: 28px; }
+  h1 { font-size: 64px; line-height: 1.05; letter-spacing: -0.03em; margin: 0 auto 20px;
+    max-width: 880px; font-weight: 800;
+    background: linear-gradient(180deg, #ffffff 30%, #9aa0b4 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { color: var(--muted); font-size: 19px; max-width: 660px; margin: 0 auto 36px; }
+  .cta-row { display:flex; justify-content:center; gap: 12px; flex-wrap: wrap; }
+  .cta-row .btn { padding: 14px 22px; font-size: 15px; border-radius: 12px; }
+
+  .logos { display:flex; gap: 56px; justify-content:center; opacity: 0.6;
+    margin: 64px 0 24px; font-size: 13px; color: var(--muted); letter-spacing: 0.08em; }
+
+  .features { display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 56px 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+  .card .icon { width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.25), rgba(47,212,255,0.25));
+    display:flex; align-items:center; justify-content:center; font-size: 20px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 8px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .features-2 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 0 0 64px; }
+
+  footer { padding: 48px 24px; text-align:center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+  <nav>
+    <div class="logo">Fluxion</div>
+    <ul>
+      <li>Product</li>
+      <li>Solutions</li>
+      <li>Pricing</li>
+      <li>Customers</li>
+      <li>Docs</li>
+      <li>Blog</li>
+    </ul>
+    <div class="actions">
+      <button class="btn ghost">Sign in</button>
+      <button class="btn primary">Get Started</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <span class="pill">✨ Now with AI agents 2.0</span>
+    <h1>Transform Your Workflow with the Power of AI</h1>
+    <p class="sub">Empower your team to unlock unprecedented productivity. Streamline operations, automate the mundane, and focus on what truly matters.</p>
+    <div class="cta-row">
+      <button class="btn primary">Get Started Free</button>
+      <button class="btn">Book a Demo</button>
+      <button class="btn ghost">Learn More →</button>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="logos">
+      <span>ACME CO</span><span>NIMBUS</span><span>HELIX</span><span>VERTEX</span><span>QUANTA</span><span>ORBIT</span>
+    </div>
+
+    <section class="features">
+      <div class="card"><div class="icon">⚡</div><h3>Lightning Fast</h3><p>Experience blazing-fast performance that scales with your needs and grows with your team.</p></div>
+      <div class="card"><div class="icon">🚀</div><h3>Built for Scale</h3><p>Designed from the ground up to handle anything you throw at it, from startups to enterprise.</p></div>
+      <div class="card"><div class="icon">🔒</div><h3>Enterprise Grade</h3><p>Bank-level security and compliance baked in by default so you can sleep at night.</p></div>
+    </section>
+
+    <section class="features-2">
+      <div class="card"><div class="icon">🧠</div><h3>Smart Automation</h3><p>Intelligent workflows that learn from your team and adapt in real-time to changing conditions.</p></div>
+      <div class="card"><div class="icon">🌐</div><h3>Global by Default</h3><p>Multi-region infrastructure with built-in localization for teams everywhere on the planet.</p></div>
+      <div class="card"><div class="icon">✨</div><h3>Beautiful by Design</h3><p>A delightful experience your team will actually love using every single day of the week.</p></div>
+    </section>
+  </div>
+
+  <footer>© 2026 Fluxion Inc. — Empowering teams, one workflow at a time.</footer>
+</body>
+</html>
