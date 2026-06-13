@@ -353,9 +353,11 @@
     /* criterion strip */
     .criteria {
       max-width: 1500px; margin: 0 auto; padding: 8px 48px 24px;
-      display: grid; gap: 18px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      display: grid; gap: 18px 28px;
+      /* 8 buckets -> two rows of four. Drops to 2-up on narrow screens. */
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
+    @media (max-width: 900px) { .criteria { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .crit {
       padding: 12px 0; border-top: 1px solid var(--rule);
     }
@@ -373,6 +375,11 @@
     }
     .crit .d {
       font-family: var(--mono); font-size: 12px; margin-top: 4px;
+    }
+    .crit .members {
+      margin-top: 6px;
+      font-family: var(--mono); font-size: 10px; line-height: 1.5;
+      color: var(--ink-3); letter-spacing: 0.02em;
     }
     .crit .why {
       margin-top: 8px;
@@ -449,8 +456,9 @@
 
     .small-multiples {
       display: grid; gap: 36px 48px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));   /* 8 buckets -> two rows of four */
     }
+    @media (max-width: 900px) { .small-multiples { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
     /* svg chart helpers */
     .axis-line { stroke: var(--rule); stroke-width: 1; opacity: 0.45; }
@@ -638,6 +646,62 @@ function criterionKeys(gens) {
     }
   }
   return order;
+}
+
+// ============================================================
+// display buckets — consolidate the ~18 raw criteria into 8 themed groups
+// ============================================================
+// PURELY a display aggregation: the engine's combined score is unchanged; the raw
+// criteria still arrive in the manifest and stay visible as each bucket's breakdown.
+// A bucket's score is the weight-respecting mean of whichever members returned a score
+// (member weights come from the rubric; standalone signals default to 1.0).
+const BUCKETS = [
+  { key: "attention",       label: "attention",        members: ["intent_alignment", "focus_clarity", "reading_order"],
+    blurb: "Does the eye land on the intended element, with a clean scan path?" },
+  { key: "motion",          label: "motion",           members: ["animation_focus", "motion"],
+    blurb: "Animation quality, and whether it resolves attention onto the focal element." },
+  { key: "hierarchy",       label: "hierarchy & layout", members: ["visual_hierarchy", "layout_spacing"],
+    blurb: "Structural clarity — a dominant focal point and disciplined spacing." },
+  { key: "color_type",      label: "color & type",     members: ["color_contrast", "typography", "consistency"],
+    blurb: "Colour, contrast, typography, and stylistic consistency." },
+  { key: "distinctiveness", label: "distinctiveness",  members: ["creativity", "originality", "ai_pitfalls", "brain_judge"],
+    blurb: "How far from generic AI-slop and how distinct from real competitors." },
+  { key: "brief_fidelity",  label: "brief fidelity",   members: ["brief_adherence", "prompt_consistency"],
+    blurb: "Did it build everything the brief asked for? (look + feature presence)" },
+  { key: "usability",       label: "usability",        members: ["affordance_clarity"],
+    blurb: "Are the interactive elements clear and obviously actionable?" },
+  { key: "function",        label: "function",         members: ["stress_test"],
+    blurb: "Do the buttons and links actually work when driven in a real browser?" },
+];
+
+/** Flat criteria for a candidate indexed by key. */
+function critByKey(cand) {
+  const out = {};
+  for (const c of (cand?.criteria || [])) out[c.key] = c;
+  return out;
+}
+
+/** Aggregate one bucket for a candidate -> {score, members:[{key,score,weight,why}]}.
+ *  score is the weighted mean over members that returned a score (null if none did). */
+function bucketAgg(cand, bucket) {
+  const by = critByKey(cand);
+  const members = [];
+  let wsum = 0, acc = 0;
+  for (const mk of bucket.members) {
+    const c = by[mk];
+    if (!c) continue;                       // member not present in this run
+    const why = explanationFor(cand, c);
+    if (c.score == null) { members.push({ key: mk, score: null, why }); continue; }
+    const w = (typeof c.weight === "number" && c.weight > 0) ? c.weight : 1.0;
+    wsum += w; acc += w * c.score;
+    members.push({ key: mk, score: c.score, weight: w, why });
+  }
+  return { score: wsum > 0 ? acc / wsum : null, members };
+}
+
+/** Per-generation series of a bucket's score (winner only). */
+function bucketSeries(gens, bucket) {
+  return gens.map(g => bucketAgg(winnerOf(g), bucket).score);
 }
 
 // ============================================================
@@ -906,20 +970,27 @@ function paintCriteria(gen) {
   if (!host) return;
   host.innerHTML = "";
   if (!cand || !cand.criteria || cand.criteria.length === 0) return;
-  const prevByKey = Object.fromEntries((prevCand?.criteria || []).map(c => [c.key, c.score]));
-  for (const c of cand.criteria) {
-    const prev = prevByKey[c.key];
-    const d = (c.score != null && prev != null) ? c.score - prev : null;
+  // One card per bucket (not per raw criterion). Each shows the bucket score, its delta
+  // vs the previous winner, the member sub-scores (so the signal stays visible), and the
+  // explanation of the weakest member — the most actionable thing to fix.
+  for (const bucket of BUCKETS) {
+    const agg = bucketAgg(cand, bucket);
+    if (agg.score == null && agg.members.length === 0) continue;  // bucket absent this run
+    const prevScore = prevCand ? bucketAgg(prevCand, bucket).score : null;
+    const d = (agg.score != null && prevScore != null) ? agg.score - prevScore : null;
     const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
     const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
-    const why = explanationFor(cand, c);
-    // Source label intentionally omitted — the dashboard now presents one
-    // flat rubric, not a saliency-vs-vlm_judge split. Whatever computes
-    // each row is an engine detail, not user-facing UX.
+    const scored = agg.members.filter(m => m.score != null);
+    const weakest = scored.length ? scored.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+    const why = weakest && weakest.why ? `${prettyKey(weakest.key)}: ${weakest.why}` : null;
+    const breakdown = scored.length
+      ? scored.map(m => `${prettyKey(m.key)} ${m.score.toFixed(2)}`).join("  ·  ")
+      : null;
     host.appendChild(el("div", { class: "crit" },
-      el("div", { class: "k" }, prettyKey(c.key)),
-      el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
+      el("div", { class: "k" }, bucket.label),
+      el("div", { class: "v" }, agg.score != null ? agg.score.toFixed(2) : "—"),
       el("div", { class: `d delta ${dcls}` }, dtxt),
+      breakdown ? el("div", { class: "members" }, breakdown) : null,
       why ? el("div", { class: "why" }, why) : null,
     ));
   }
@@ -1070,16 +1141,18 @@ function renderMetrics() {
     chartSVG(gens.map(g => g.id), combined, { maxY: 10, height: 260, fullLabels: true, markBest: true }),
   );
 
-  const keys = criterionKeys(gens);
+  // One chart per BUCKET (not per raw criterion) so the metrics page mirrors the 8-box
+  // consolidation. Each bucket's series is its weighted-mean score across generations.
   const smallMultiples = el("div", { class: "small-multiples" });
-  for (const k of keys) {
-    const s = seriesFor(gens, k);
+  for (const bucket of BUCKETS) {
+    const s = bucketSeries(gens, bucket);
+    if (s.every(v => v == null)) continue;  // bucket has no data in this run
     const c = s[s.length - 1];
     const p = s.length > 1 ? s[s.length - 2] : null;
     const dd = (c != null && p != null) ? c - p : null;
     smallMultiples.appendChild(el("div", { class: "chart-card chart-small" },
       el("div", { class: "head" },
-        el("h3", null, prettyKey(k)),
+        el("h3", null, bucket.label),
         el("div", { class: "now" },
           el("strong", null, fmt(c, 2)),
           el("span", { class: `d delta ${deltaClass(dd)}` }, dd == null ? "" : ` ${dd>0?"+":""}${dd.toFixed(2)}`),
