@@ -66,7 +66,7 @@ criteria:
   # judges interaction BEHAVIOR; brain_judge scores perceptual design-DNA. Enable the
   # Nemotron pair when NEBIUS_API_KEY is set.
   prompt_consistency: 0.4   # Nemotron: is every requested element/feature actually in the build? (text, not visual)
-  stress_test:        0.3   # Nemotron + headless browser: do buttons/links work & behave consistently? (behavior only)
+  stress_test:        0.1   # Nemotron + headless browser: do buttons/links work? (behavior only — downweighted; these are static demos, so function matters less than design)
   brain_judge:        0.2   # perceptual-fallback classifier (RBF SVM, CV-AUC 0.85) vs awwwards/Lovable; NOT real brain data yet
 
 saliency:

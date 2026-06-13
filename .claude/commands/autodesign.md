@@ -208,16 +208,20 @@ cannot be dropped:
 .venv/bin/python -m pipeline.feedback --candidate <run_dir>/gen-(g-1)/<winner>
 ```
 
-This prints a markdown brief: the judge's worst-first issues, the critic's
-nameable decisions, the weakest rubric principles, and a one-line verdict. Keep
-this text — it is the spec for this generation.
+This prints a markdown brief that LEADS with the creative design direction (bold
+moves to make the page more striking), then the concrete fixes (broken interactions,
+attention/brief gaps), the critic's nameable decisions, weakest rubric principles, and
+a one-line verdict. Keep this text — it is the spec for this generation.
 
 **2. Generate the refinement.** Create the candidate dir, then invoke the
 **`generator`** subagent in edit mode. Pass it the previous `index.html`, the
-critic's `critique` + `nameable_decisions` from step 1, AND the full feedback
-brief from step 1b. Tell it explicitly: address EVERY issue in the brief, make a
-visible substantive change for each, and do NOT return a near-identical page. It
-writes a single new html at:
+critic's `critique` + `nameable_decisions` from step 1, the full feedback brief from
+step 1b, AND the generation phase: tell it this is **generation `g` of
+`loop.iterations`** — early rounds should take BIG design swings (the creative
+direction is the priority, the current page is just a starting point); later rounds
+shift toward refinement and polish. Tell it explicitly: commit to at least one bold
+creative move from the design direction, also fix the concrete issues, and do NOT
+return a near-identical page. It writes a single new html at:
 
 ```
 <run_dir>/gen-GGG/cand-00/index.html
