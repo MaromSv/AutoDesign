@@ -122,14 +122,21 @@ playwright install chromium`).
 **d. Score** each candidate:
 
 ```bash
-python -m pipeline.benchmark --candidate <run_dir>/gen-000/cand-NN
+python -m pipeline.benchmark --candidate <run_dir>/gen-000/cand-NN \
+    --references --run-dir <run_dir>
 ```
 
 This writes `<run_dir>/gen-000/cand-NN/scores.json`. The benchmark CLI auto-discovers
 the frames written in step (c) under `<cand>/frames/`, so `vlm_judge` scores for real
-(needs `anthropic` + `ANTHROPIC_API_KEY`). `saliency` is still a stub and returns
-`null` — it drops out of the weighted combine, so `combined` is currently the
-`vlm_judge` score alone.
+(needs `anthropic` + `ANTHROPIC_API_KEY`). It carries two extra rubric principles:
+`ai_pitfalls` (slop-detector fingerprint/corpus evidence on the candidate's HTML —
+always on) and, with `--references`, `originality` (the research agent finds
+similar-use-case competitors once per run, cached under `<run_dir>/references/`, and the
+judge scores how much the candidate stands out). `saliency` runs from the captured
+frame sequence. Combined = weighted mean of `saliency` (0.4) + `vlm_judge` (0.6).
+
+Drop `--references` to skip the per-run web search (originality won't be scored; the rest
+is unchanged).
 
 **e. Pick the winner.** With real signals, the winner is `argmax(combined)`.
 Today, with stubs, every score is 0.0 — break the tie with judgment: open each

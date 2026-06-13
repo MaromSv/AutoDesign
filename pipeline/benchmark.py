@@ -169,12 +169,34 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Build the context and print the result instead of writing to disk.",
     )
+    parser.add_argument(
+        "--references",
+        action="store_true",
+        help="Acquire similar-use-case competitors (web search) so the vlm_judge also "
+             "scores originality. Cached under <run-dir>/references so it runs once per run.",
+    )
+    parser.add_argument(
+        "--run-dir",
+        default=None,
+        help="Run root where references are cached/shared across candidates. "
+             "Defaults to the candidate dir (per-candidate acquisition).",
+    )
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
     brief = (config.get("brief") or "").strip()
+
+    references: list = []
+    topic = ""
+    if args.references:
+        from pipeline.references import acquire_references
+        run_dir = Path(args.run_dir) if args.run_dir else Path(args.candidate)
+        ref = acquire_references(brief, run_dir, config)
+        references, topic = ref.screenshots, ref.topic
+
     ctx = build_context(Path(args.candidate), brief=brief, config=config,
-                        frames=_discover_frames(args.candidate))
+                        frames=_discover_frames(args.candidate),
+                        references=references, topic=topic)
     result = score_candidate(ctx)
 
     if args.dry_run:
