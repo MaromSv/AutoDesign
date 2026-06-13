@@ -47,12 +47,18 @@ COPY CLAUDE.md        /app/CLAUDE.md
 # bake in rather than mount a volume.
 COPY data/brain/      /app/data/brain/
 
-# Pre-download the DeepGaze model weights so the first submission isn't a
-# 100MB+ cold start over the wire. Cached into /root/.cache/torch/hub
-# inside the image; the weights are part of the layer.
-RUN python -c "import deepgaze_pytorch as d; \
-    d.DeepGazeIIE(pretrained=True); d.DeepGazeIII(pretrained=True)" \
-    || echo "deepgaze weight pre-download skipped (will lazy-load on first use)"
+# Pre-download the DeepGaze model weights so the first submission doesn't
+# pay a 100MB+ cold-start cost (and so it doesn't hit bitbucket's flaky
+# single-connection limits at runtime). The Geirhos ResNet-50 SIN+IN file
+# served from bitbucket is the one that EOFs mid-stream when fetched via
+# torch.hub; using curl with retries makes the build deterministic.
+ENV TORCH_HUB_CACHE=/root/.cache/torch/hub/checkpoints
+RUN mkdir -p "$TORCH_HUB_CACHE" \
+ && curl -L --retry 12 --retry-delay 5 --retry-all-errors \
+        --max-time 1200 --connect-timeout 30 -fSso \
+        "$TORCH_HUB_CACHE/resnet50_finetune_60_epochs_lr_decay_after_30_start_resnet50_train_45_epochs_combined_IN_SF-ca06340c.pth.tar" \
+        "https://bitbucket.org/robert_geirhos/texture-vs-shape-pretrained-models/raw/60b770e128fffcbd8562a3ab3546c1a735432d03/resnet50_finetune_60_epochs_lr_decay_after_30_start_resnet50_train_45_epochs_combined_IN_SF-ca06340c.pth.tar" \
+ && python -c "import deepgaze_pytorch as d; d.DeepGazeIIE(pretrained=True); d.DeepGazeIII(pretrained=True); print('deepgaze pretrained models loaded ok')"
 
 EXPOSE 8080
 VOLUME ["/data"]
