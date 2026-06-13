@@ -15,8 +15,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from threading import BoundedSemaphore
 from typing import Iterable
 
 # Ensure all signal modules import and register before we read the registry.
@@ -24,6 +27,24 @@ import pipeline.signals  # noqa: F401
 from pipeline.config import criteria_weights, load_config, load_dotenv
 from pipeline.context import CandidateContext, SignalResult
 from pipeline.registry import get_signals
+
+# A candidate's signals run concurrently (they're independent and the slow ones —
+# vlm_judge, stress_test, prompt_consistency — are I/O-bound API/browser calls). Because
+# batch.py ALSO runs candidates in parallel, the two pools nest: without a bound the
+# in-flight count is workers x signals, enough to trip API rate limits. This global
+# semaphore caps total simultaneously-executing signals across every candidate. Override
+# with AUTODESIGN_MAX_SIGNAL_CONCURRENCY (0/empty disables the cap entirely).
+_raw_cap = os.environ.get("AUTODESIGN_MAX_SIGNAL_CONCURRENCY", "8").strip()
+_MAX_CONCURRENT_SIGNALS = int(_raw_cap) if _raw_cap else 0
+_SIGNAL_SEMAPHORE = BoundedSemaphore(_MAX_CONCURRENT_SIGNALS) if _MAX_CONCURRENT_SIGNALS > 0 else None
+
+
+def _run_signal(sig, ctx: CandidateContext) -> SignalResult:
+    """Execute one signal, honoring the global concurrency cap if one is set."""
+    if _SIGNAL_SEMAPHORE is None:
+        return sig.score(ctx)
+    with _SIGNAL_SEMAPHORE:
+        return sig.score(ctx)
 
 
 def _resolve_paths(candidate: Path) -> tuple[Path, Path | None, str]:
@@ -127,16 +148,29 @@ def score_candidate(ctx: CandidateContext) -> dict:
     """
     weights = criteria_weights(ctx.config)
     signals = get_signals()
+    keys = list(weights.keys())
 
+    # Run all applicable signals concurrently — they're independent (each only reads ctx
+    # and returns a SignalResult) and the slow ones are I/O-bound, so a candidate's
+    # wall-clock drops from the SUM of signal latencies to roughly the slowest single one.
+    results: dict[str, SignalResult] = {}
+    runnable = {key: sig for key in keys if (sig := signals.get(key)) is not None}
+    if runnable:
+        with ThreadPoolExecutor(max_workers=len(runnable)) as pool:
+            futs = {pool.submit(_run_signal, sig, ctx): key for key, sig in runnable.items()}
+            for fut in as_completed(futs):
+                results[futs[fut]] = fut.result()  # re-raises if a signal threw
+
+    # Assemble in the deterministic criteria order (not completion order) so scores.json
+    # is stable across runs regardless of which signal finished first.
     per_criterion: dict[str, float | None] = {}
     raw: dict[str, dict] = {}
-    for key in weights.keys():
-        sig = signals.get(key)
-        if sig is None:
+    for key in keys:
+        if key not in runnable:
             per_criterion[key] = None
             raw[key] = {"details": {}, "skipped": "no signal registered for this key"}
             continue
-        result: SignalResult = sig.score(ctx)
+        result = results[key]
         per_criterion[key] = result.score
         raw[key] = {"details": result.details, "skipped": result.skipped}
 
