@@ -23,6 +23,6 @@ clip @ git+https://github.com/openai/CLIP.git
 deepgaze-pytorch @ git+https://github.com/matthias-k/DeepGaze.git
 
 # brain_judge signal — RBF SVM classifier loaded from data/brain/model.joblib.
-# Pinning to the training version (1.9.0) eliminates the "trying to unpickle from
-# 1.9.0 when using 1.7.2" warning and matches floating-point math exactly.
-scikit-learn==1.9.0
+# Left unpinned: the model unpickles cleanly across recent sklearn versions
+# (you may see a "trained on X / running Y" warning, but the load succeeds).
+scikit-learn
