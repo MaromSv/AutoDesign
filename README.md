@@ -1,13 +1,32 @@
 # AutoDesign
 
-Scaffold for an evaluation-driven UI generator. A `/autodesign` loop produces candidate
-landing pages from a brief, scores each against a pluggable set of signals (saliency,
-VLM judge, code quality, task completion, embeddings), and evolves the winner across
-generations. A read-only dashboard reads run artifacts from disk.
+An evaluation-driven UI generator. Describe a UI in one sentence; the `/autodesign` loop
+builds a minimal version, scores it on 8 criteria with a panel of real evaluators (a
+vision judge, an attention model, agentic browser tests, and a perceptual classifier),
+and improves the winner every generation. A read-only dashboard reads run artifacts from
+disk. See [OVERVIEW.md](OVERVIEW.md) for the full diagrams.
 
-This repository is currently a **scaffold**: directories, file stubs, and the
-interfaces that future implementations plug into. No real scoring, capture, evolution,
-or rendering logic exists yet.
+![AutoDesign loop](docs/autodesign-loop.png)
+
+## The 8 scoring criteria
+
+Each candidate is graded on these. The combined score is a weighted blend; the dashboard
+groups the underlying ~18 metrics into these 8 buckets.
+
+| Criterion | What it checks | Core technology |
+|---|---|---|
+| **Attention** | Does predicted gaze land on the intended CTA, with a clean scan path? | DeepGaze IIE/III (PyTorch attention model) |
+| **Motion** | Does the entrance animation resolve attention *onto* the CTA? | DeepGaze + Claude vision judge |
+| **Hierarchy & Layout** | One clear focal order; disciplined spacing and alignment | Claude vision judge |
+| **Color & Type** | Cohesive palette, legible contrast, consistent type | Claude vision judge |
+| **Distinctiveness** | Not generic AI-slop; stands out from real competitors | Claude vision judge + slop-detector + RBF-SVM classifier |
+| **Brief Fidelity** | Is every element/feature the brief asked for actually present? | Nemotron text check + Claude vision judge |
+| **Usability** | Are the interactive elements obvious and unambiguous? | Claude vision judge |
+| **Function** | Do the buttons and links actually work in a real browser? | Nemotron sub-agents driving Playwright/Chromium |
+
+> `Distinctiveness`'s originality sub-signal and `Brief Fidelity`/`Function`'s Nemotron
+> signals are optional — they activate when a competitor-research agent / `NEBIUS_API_KEY`
+> are available, and skip gracefully otherwise.
 
 ## How to run
 
