@@ -41,9 +41,17 @@ _DEFAULT_TIER_MAP = {
 }
 _MAX_FRAMES = 5  # cap frames sent to bound cost/context; sampled evenly across the clip
 # The judge returns a per-principle reason for every rubric principle (10+), a critique,
-# a worst-first `issues` array, and `nameable_decisions`. That JSON is long — 1500 tokens
-# truncated it mid-object, so the response failed to parse and the signal silently skipped.
-_MAX_OUTPUT_TOKENS = 4096
+# a worst-first `issues` array, and `nameable_decisions`. That JSON is long — a healthy
+# response is ~1.5-2k tokens, but when the model pretty-prints or adds reasoning it can run
+# much larger, and any cut-off mid-object is unparseable. 8192 gives ~4x headroom over a
+# typical response so truncation effectively never happens.
+_MAX_OUTPUT_TOKENS = 8192
+# vlm_judge is the dominant criterion (0.8). A transient bad response (truncation, a stray
+# malformed-JSON emission) used to return score=None and silently tank the candidate, which
+# is why runs needed manual rescoring. Retry the call a few times so intermittent failures
+# self-heal before we give up. The model's verbosity varies run-to-run, so a fresh call
+# usually parses cleanly.
+_MAX_JUDGE_ATTEMPTS = 3
 
 
 @register_signal
@@ -88,19 +96,32 @@ class JudgeSignal:
                                n_refs=len(references), topic=ctx.topic,
                                slop_evidence_text=evidence_text)
 
-        try:
-            raw = _call_vision_model(model, prompt, frames, references)
-        except _JudgeUnavailable as exc:
-            return SignalResult(score=None, skipped=str(exc))
-        except Exception as exc:  # noqa: BLE001 - any model/transport error -> skip, don't crash the loop
-            return SignalResult(score=None, skipped=f"judge model error: {exc}")
+        # Call the judge with bounded retries. vlm_judge is the dominant criterion, so an
+        # intermittent truncation / malformed-JSON / transport blip must not silently return
+        # null and tank the candidate — retry before giving up. Config/credential problems
+        # (_JudgeUnavailable) are NOT retryable, so we bail immediately on those.
+        raw = ""
+        parsed = None
+        last_reason = "could not parse judge response"
+        for attempt in range(1, _MAX_JUDGE_ATTEMPTS + 1):
+            try:
+                raw = _call_vision_model(model, prompt, frames, references)
+            except _JudgeUnavailable as exc:
+                return SignalResult(score=None, skipped=str(exc))
+            except _JudgeTruncated as exc:
+                last_reason = str(exc); raw = ""; continue  # retry: a fresh response usually fits
+            except Exception as exc:  # noqa: BLE001 - transport/model error -> retry, then skip
+                last_reason = f"judge model error: {exc}"; raw = ""; continue
+            parsed = _parse_response(raw)
+            if parsed is not None:
+                break
+            last_reason = "could not parse judge response"
 
-        parsed = _parse_response(raw)
         if parsed is None:
             return SignalResult(
                 score=None,
-                skipped="could not parse judge response",
-                details={"raw_response": raw[:2000]},
+                skipped=f"{last_reason} (after {_MAX_JUDGE_ATTEMPTS} attempts)",
+                details={"raw_response": raw[:2000], "attempts": _MAX_JUDGE_ATTEMPTS},
             )
 
         score10, per_principle = _combine(rubric, parsed["scores"])
@@ -134,7 +155,13 @@ class JudgeSignal:
 
 # --------------------------------------------------------------------------- helpers
 class _JudgeUnavailable(RuntimeError):
-    """Raised when the judge cannot run for an expected reason (no SDK / no key)."""
+    """Raised when the judge cannot run for an expected reason (no SDK / no key).
+    NOT retryable — retrying won't conjure a key."""
+
+
+class _JudgeTruncated(RuntimeError):
+    """Raised when the model stopped on its token limit, so the JSON is cut off.
+    Retryable — a fresh, less verbose response usually fits."""
 
 
 def _resolve_model(config: dict) -> str:
@@ -308,7 +335,10 @@ def _call_anthropic(model: str, prompt: str, frames: list[Path],
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[{"role": "user", "content": content}],
     )
-    return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+    if getattr(resp, "stop_reason", None) == "max_tokens":
+        raise _JudgeTruncated(f"judge response hit max_tokens ({_MAX_OUTPUT_TOKENS})")
+    return text
 
 
 def _call_openai(model: str, prompt: str, frames: list[Path],
@@ -339,7 +369,10 @@ def _call_openai(model: str, prompt: str, frames: list[Path],
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[{"role": "user", "content": content}],
     )
-    return resp.choices[0].message.content or ""
+    choice = resp.choices[0]
+    if getattr(choice, "finish_reason", None) == "length":
+        raise _JudgeTruncated(f"judge response hit max_tokens ({_MAX_OUTPUT_TOKENS})")
+    return choice.message.content or ""
 
 
 def _parse_response(text: str) -> dict | None:
