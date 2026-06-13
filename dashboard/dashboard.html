@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AutoDesign</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -37,16 +38,19 @@
     /* ---- top bar (editorial masthead) ----------------------------------- */
     header.masthead {
       border-bottom: 1px solid var(--rule);
-      padding: 18px 36px 16px;
-      display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 24px;
+      padding: 14px 32px;
+      display: flex; align-items: center; gap: 28px;
       background: var(--paper);
     }
-    .wordmark {
-      font-family: var(--serif); font-weight: 500;
-      font-size: 32px; letter-spacing: -0.01em; line-height: 1;
+    .brand { display: flex; align-items: center; }
+    .brand img {
+      display: block; height: 40px; width: auto;
+      /* multiply blends the PNG's white background into the cream paper
+         while leaving the black wordmark + orange mark intact */
+      mix-blend-mode: multiply;
     }
-    .wordmark em { font-style: italic; color: var(--accent); font-weight: 500; }
     .nav { display: flex; gap: 0; align-self: end; }
+    .meta { margin-left: auto; }
     .nav button {
       background: transparent; border: 0; padding: 6px 16px 10px;
       font-family: var(--serif); font-size: 16px; color: var(--ink-3);
@@ -145,18 +149,15 @@
       pointer-events: none;
     }
     .stage .layer.active { opacity: 1; }
-    .stage .saliency-layer { mix-blend-mode: normal; }
-    /* Live iframe stage layer — fixed at the page's design viewport (1280x800)
-       and CSS-scaled to fit the stage box. Lets us render the candidate's
-       actual HTML so its entrance animations run on every flip, instead of
-       trying to autoplay a recorded webm (which browsers gate behind user
-       gestures). */
+    /* Saliency layer rides on top of the iframe so the animation plays
+       underneath while the heatmap stays visible the whole time. */
+    .stage .saliency-layer { mix-blend-mode: multiply; z-index: 2; }
     .stage .frame-layer {
       position: absolute; top: 0; left: 0;
       width: 1280px; height: 800px;
       border: 0; background: transparent;
       transform-origin: top left;
-      pointer-events: none;
+      pointer-events: none; z-index: 1;
     }
     .stage .empty-layer {
       position: absolute; inset: 0; display: grid; place-items: center;
@@ -172,6 +173,7 @@
       font-family: var(--serif); font-size: 24px; line-height: 1;
       cursor: pointer; display: grid; place-items: center;
       opacity: 0; transition: opacity 160ms ease;
+      z-index: 3;
     }
     .stage:hover .nav-arrow { opacity: 1; }
     .stage .nav-arrow:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -185,6 +187,7 @@
       background: rgba(255,255,255,0.92); border: 1px solid var(--rule);
       padding: 6px 10px; font-family: var(--mono); font-size: 11px;
       letter-spacing: 0.06em; color: var(--ink);
+      z-index: 3;
     }
     .stage .stage-badge .star { color: var(--accent); font-weight: 600; }
     .stage .open-live {
@@ -192,6 +195,7 @@
       background: var(--accent); color: #fff; border: 1px solid var(--accent);
       padding: 6px 10px; font-family: var(--mono); font-size: 11px;
       letter-spacing: 0.04em; cursor: pointer;
+      z-index: 3;
     }
 
     /* below-stage controls bar: dots + saliency toggle + auto-play */
@@ -405,38 +409,6 @@
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
 
-    /* VLM judge feedback */
-    .vlm-section {
-      max-width: 1500px; margin: 0 auto; padding: 32px 48px 80px;
-      border-top: 1px solid var(--rule);
-    }
-    .vlm-section .head {
-      display: flex; justify-content: space-between; align-items: baseline;
-      margin-bottom: 18px;
-    }
-    .vlm-section h3 {
-      margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 500;
-    }
-    .vlm-section .badge {
-      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
-      border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 99px;
-    }
-    .vlm-list {
-      display: grid; gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    }
-    .vlm-card {
-      padding: 18px; border: 1px solid var(--rule); background: var(--paper-2);
-    }
-    .vlm-card .gen {
-      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-      letter-spacing: 0.06em; text-transform: uppercase;
-    }
-    .vlm-card .feedback {
-      font-family: var(--serif); font-size: 17px; font-style: italic;
-      color: var(--ink-2); margin-top: 8px; line-height: 1.45;
-    }
-
     /* svg chart helpers */
     .axis-line { stroke: var(--rule); stroke-width: 1; opacity: 0.45; }
     .axis-line.faint { stroke-dasharray: 2 4; opacity: 0.18; }
@@ -471,7 +443,7 @@
 <body>
 
 <header class="masthead">
-  <div class="wordmark">autodesign<em>.</em></div>
+  <div class="brand"><img src="/logo.png" alt="autodesign." /></div>
   <nav class="nav">
     <button data-view="evolution" class="active">Evolution</button>
     <button data-view="metrics">Metrics</button>
@@ -507,14 +479,14 @@ const STATE = {
   view: "evolution",        // "evolution" | "metrics"
   scrubIndex: 0,            // index into generations
   candIndex: 0,             // which sibling within current gen is on stage
-  showSaliency: false,      // overlay on the stage
+  // Saliency toggle is a "sticky" UI preference: once the user turns it on
+  // it stays on across candidate flips, gen scrubs, and run switches —
+  // it only flips when the user clicks the toggle again.
+  showSaliency: false,
   playTimer: null,          // interval id for auto-cycle through siblings
-  stageA: null,             // ping-pong base image layers (stable across flips)
-  stageB: null,
   stageSal: null,           // saliency layer
   stageFrame: null,         // live iframe layer showing the candidate's actual HTML
   stageRO: null,            // ResizeObserver to keep the iframe scale matched to the stage box
-  stageActive: "a",         // which base layer is currently visible
 };
 
 const SUB_LABELS = {
@@ -620,32 +592,21 @@ function renderEvolution() {
   main.innerHTML = "";
 
   const gen = gens[STATE.scrubIndex];
-  // Clamp candIndex into this gen's candidate list.
   if (STATE.candIndex >= gen.candidates.length) STATE.candIndex = 0;
 
-  // hero: info column + stage shell column
   const info = el("div", { class: "evo-info", id: "evo-info" });
   const stageShell = el("div", { class: "stage-shell" }, buildStageShell(gen));
   main.appendChild(el("section", { class: "evo-hero" }, info, stageShell));
   paintInfo(gen);
 
-  // scrubber
   main.appendChild(renderScrubber(gens));
 
-  // criterion strip — reflects the candidate currently on stage
   main.appendChild(el("div", { class: "criteria", id: "criteria-strip" }));
   paintCriteria(gen);
 }
 
-/* Build the stage shell ONCE per generation: two stable base img layers,
-   one saliency layer, prev/next arrows, badge, open-live button, and a
-   bar with sibling dots + saliency toggle + auto-play. After this, all
-   updates (flip, toggle, play) mutate the existing DOM so transitions animate. */
 function buildStageShell(gen) {
   const stage = el("div", { class: "stage" });
-  // Live iframe layer — the candidate's actual HTML, so its entrance
-  // animation runs on every flip. The page is authored for 1280x800; we
-  // CSS-scale the iframe down so it fits whatever size the stage box ends up.
   STATE.stageFrame = el("iframe", {
     class: "layer frame-layer",
     sandbox: "allow-same-origin allow-scripts",
@@ -653,12 +614,9 @@ function buildStageShell(gen) {
     title: "candidate preview",
   });
   STATE.stageSal = el("img", { class: "layer saliency-layer", alt: "saliency overlay" });
-  STATE.stageActive = "a";
   stage.appendChild(STATE.stageFrame);
   stage.appendChild(STATE.stageSal);
 
-  // Keep the iframe scaled so 1280px-wide pages fill the stage box exactly.
-  // ResizeObserver fires whenever the stage box is resized (layout / window).
   if (STATE.stageRO) { STATE.stageRO.disconnect(); }
   STATE.stageRO = new ResizeObserver(entries => {
     for (const e of entries) {
@@ -689,10 +647,8 @@ function buildStageShell(gen) {
   const empty = el("div", { class: "empty-layer", id: "stage-empty", style: "display:none" }, "no frame captured");
   stage.appendChild(empty);
 
-  // bar under the stage
   const bar = el("div", { class: "stage-bar" });
 
-  // sibling dots
   const dots = el("div", { class: "sib-dots", id: "sib-dots" });
   gen.candidates.forEach((c, i) => {
     const d = el("div", {
@@ -705,7 +661,6 @@ function buildStageShell(gen) {
   dots.appendChild(el("span", { class: "count", id: "sib-count" }));
   bar.appendChild(dots);
 
-  // auto-play (only meaningful with siblings)
   if (gen.candidates.length > 1) {
     const play = el("button", { class: "play-btn", id: "play-btn" }, "▶ play");
     play.addEventListener("click", togglePlay);
@@ -714,9 +669,8 @@ function buildStageShell(gen) {
 
   bar.appendChild(el("div", { class: "spacer" }));
 
-  // saliency yes/no toggle
   if (gen.candidates.some(c => c.saliency)) {
-    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze saliency heatmap" },
+    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze saliency heatmap over the running animation" },
       el("span", null, "saliency"),
       el("span", { class: "label-no" }, "no"),
       el("div", { class: "switch" }),
@@ -726,13 +680,12 @@ function buildStageShell(gen) {
     bar.appendChild(toggle);
   }
 
-  // initial paint
   setTimeout(() => paintStage(gen, /*animate=*/false), 0);
 
   return el("div", null, stage, bar);
 }
 
-/* Mutate the existing stage to show candidate at STATE.candIndex. */
+/* Repaint the iframe + saliency overlay for the candidate currently on stage. */
 function paintStage(gen, animate = true) {
   const cand = gen.candidates[STATE.candIndex];
   if (!cand) return;
@@ -740,14 +693,11 @@ function paintStage(gen, animate = true) {
   const haveHtml = !!cand.html;
   emptyEl.style.display = haveHtml ? "none" : "grid";
 
-  // Live iframe layer. Setting src on every flip restarts the page's
-  // entrance animation — exactly what we want users to see. When the
-  // saliency overlay is on we keep the iframe in place (animations still
-  // running underneath) but the heatmap covers it.
   const frame = STATE.stageFrame;
   if (haveHtml) {
-    // Force a reload even when flipping to the same src (e.g. user nudges
-    // to the same candidate) so the animation always restarts cleanly.
+    // Force a reload so the candidate's entrance animation restarts cleanly
+    // every time we flip to it. The saliency overlay (if on) sits on top
+    // and stays visible while this animation plays underneath.
     frame.src = "about:blank";
     requestAnimationFrame(() => { frame.src = cand.html; });
     frame.classList.add("active");
@@ -760,16 +710,8 @@ function paintStage(gen, animate = true) {
     requestAnimationFrame(() => { frame.style.transition = ""; });
   }
 
-  // Saliency overlay layer — toggled by the YES/NO control under the stage.
-  if (cand.saliency) {
-    STATE.stageSal.src = cand.saliency;
-    STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
-  } else {
-    STATE.stageSal.classList.remove("active");
-    STATE.stageSal.removeAttribute("src");
-  }
+  paintSaliency();
 
-  // badge: "cand-XX · winner" / "cand-XX"
   const badge = document.getElementById("stage-badge");
   if (badge) {
     badge.innerHTML = "";
@@ -779,7 +721,6 @@ function paintStage(gen, animate = true) {
     }
   }
 
-  // sibling indicator dots + count
   const dotsRoot = document.getElementById("sib-dots");
   if (dotsRoot) {
     const dots = dotsRoot.querySelectorAll(".dot");
@@ -789,25 +730,36 @@ function paintStage(gen, animate = true) {
   }
 }
 
-/* Repaint the info column (gen score, hypothesis, what-changed). Cheap full redraw. */
+/* Update only the saliency overlay layer. Does NOT touch the iframe so
+   we never restart a running animation just to flip the heatmap on/off. */
+function paintSaliency() {
+  const cand = currentCand();
+  if (!STATE.stageSal) return;
+  if (cand?.saliency) {
+    if (STATE.stageSal.getAttribute("src") !== cand.saliency) {
+      STATE.stageSal.src = cand.saliency;
+    }
+    STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
+  } else {
+    STATE.stageSal.classList.remove("active");
+    STATE.stageSal.removeAttribute("src");
+  }
+}
+
 function paintInfo(gen) {
-  const m = STATE.manifest;
   const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
   const cand = currentCand();
   const winner = winnerOf(gen);
   const prevWinner = prevGen ? winnerOf(prevGen) : null;
   const isMulti = gen.candidates.length > 1;
 
-  // For fan-out gens we show TWO numbers: the candidate on stage, and (smaller) the gen winner.
   const showScore = cand?.combined;
   const winnerScore = winner?.combined;
   const delta = (showScore != null && prevWinner?.combined != null) ? showScore - prevWinner.combined : null;
 
   const info = document.getElementById("evo-info");
   info.innerHTML = "";
-  info.appendChild(el("h1", { class: "display" }, "AutoDesign."));
-  info.appendChild(el("p", { class: "body-lead" }, "relentlessly refined."));
-  info.appendChild(el("div", { class: "gen-label", style: "margin-top:40px" }, gen.id.toUpperCase() + (isMulti ? ` · ${cand?.id ?? ""}` : "")));
+  info.appendChild(el("div", { class: "gen-label" }, gen.id.toUpperCase() + (isMulti ? ` · ${cand?.id ?? ""}` : "")));
   info.appendChild(el("div", { class: "gen-score" },
     showScore != null ? showScore.toFixed(2) : "—",
     el("sup", null, "/ 10"),
@@ -823,7 +775,6 @@ function paintInfo(gen) {
   }
 }
 
-/* Repaint the criterion strip for the candidate currently on stage. */
 function paintCriteria(gen) {
   const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
   const prevCand = prevGen ? winnerOf(prevGen) : null;
@@ -838,7 +789,6 @@ function paintCriteria(gen) {
     const d = (c.score != null && prev != null) ? c.score - prev : null;
     const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
     const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
-    // Plain-English explanation from the signal, if it provided one.
     const why = explanationFor(cand, c);
     host.appendChild(el("div", { class: "crit" },
       el("div", { class: "k" }, prettyKey(c.key)),
@@ -850,8 +800,6 @@ function paintCriteria(gen) {
   }
 }
 
-/* Read a per-subscore explanation from the candidate's raw signal details.
-   Returns null if the signal didn't emit one (e.g. legacy runs). */
 function explanationFor(cand, c) {
   const det = cand?.details?.[c.source]?.details;
   if (!det) return null;
@@ -860,13 +808,11 @@ function explanationFor(cand, c) {
   return null;
 }
 
-/* Current candidate on the stage. */
 function currentCand() {
   const gen = STATE.manifest.generations[STATE.scrubIndex];
   return gen.candidates[STATE.candIndex];
 }
 
-/* Flip to a specific sibling by index (clamped). Animates the crossfade. */
 function setCand(i) {
   const gen = STATE.manifest.generations[STATE.scrubIndex];
   const n = gen.candidates.length;
@@ -877,16 +823,16 @@ function setCand(i) {
 }
 function stepCand(d) { setCand(STATE.candIndex + d); }
 
-/* Saliency yes/no. */
+/* Saliency yes/no. The toggle is sticky: it stays in whichever state the
+   user put it in across candidate flips, gen scrubs, and run switches. */
 function setShowSaliency(v) {
   STATE.showSaliency = !!v;
   const t = document.getElementById("saliency-toggle");
   if (t) t.classList.toggle("on", STATE.showSaliency);
-  const gen = STATE.manifest.generations[STATE.scrubIndex];
-  paintStage(gen, /*animate=*/false);
+  // Don't touch the iframe — only the overlay layer toggles.
+  paintSaliency();
 }
 
-/* Auto-cycle through siblings. */
 function togglePlay() {
   if (STATE.playTimer) { stopPlay(); return; }
   const btn = document.getElementById("play-btn");
@@ -911,17 +857,6 @@ function deltaClass(d) {
   return d > 0 ? "pos" : "neg";
 }
 
-function renderChangedNote(manifest, gen) {
-  const linRec = (manifest.lineage || []).find(r => `gen-${String(r.generation).padStart(3, "0")}` === gen.id);
-  if (!linRec) return null;
-  const changed = linRec.changed;
-  if (!changed) return null;
-  return el("p", { class: "gen-changed" },
-    el("strong", null, "what changed: "),
-    changed,
-  );
-}
-
 function renderScrubber(gens) {
   const combined = combinedSeries(gens);
   const best = bestIndex(gens);
@@ -930,7 +865,6 @@ function renderScrubber(gens) {
   const sc = el("div", { class: "scrubber" });
   sc.appendChild(el("div", { class: "track" }));
 
-  // ticks
   const pct = i => n === 1 ? 50 : (i / (n - 1)) * 100;
   const progress = el("div", { class: "progress", style: `width:${pct(STATE.scrubIndex)}%` });
   sc.appendChild(progress);
@@ -942,10 +876,9 @@ function renderScrubber(gens) {
       style: `left:${pct(i)}%`,
       on: { click: () => {
         STATE.scrubIndex = i;
-        // Reset candidate to the winner of the new gen, drop saliency overlay, stop autoplay.
         const newGen = STATE.manifest.generations[i];
         STATE.candIndex = Math.max(0, newGen.candidates.findIndex(c => c.id === newGen.winner));
-        STATE.showSaliency = false;
+        // NOTE: do NOT reset STATE.showSaliency — the toggle is sticky.
         renderEvolution();
       } },
     },
@@ -965,28 +898,6 @@ function renderScrubber(gens) {
   return wrap;
 }
 
-function renderCriterionStrip(gen, prevWinner) {
-  const w = winnerOf(gen);
-  const wrap = el("div", { class: "criteria" });
-  if (!w || !w.criteria || w.criteria.length === 0) return wrap;
-  const prevByKey = Object.fromEntries((prevWinner?.criteria || []).map(c => [c.key, c.score]));
-  for (const c of w.criteria) {
-    const prev = prevByKey[c.key];
-    const d = (c.score != null && prev != null) ? c.score - prev : null;
-    const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
-    const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
-    wrap.appendChild(el("div", { class: "crit" },
-      el("div", { class: "k" }, prettyKey(c.key)),
-      el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
-      el("div", { class: `d delta ${dcls}` }, dtxt),
-      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
-    ));
-  }
-  return wrap;
-}
-
-// (siblings drawer removed — inline dots + arrows + auto-play on the stage handle this now.)
-
 // ============================================================
 // rendering — metrics page
 // ============================================================
@@ -1000,10 +911,9 @@ function renderMetrics() {
     el("div", { class: "eyebrow" }, m.brief || "AutoDesign run"),
     el("h1", { class: "display" }, "the loop, in numbers."),
     el("p", { class: "body-lead" },
-      "Every criterion plotted across generations. Sub-scores are 0–1; combined is 0–10. A green dot marks the best generation."),
+      "Every criterion plotted across generations. Sub-scores are 0–1; combined is 0–10."),
   ));
 
-  // ---- combined chart (big)
   const combined = combinedSeries(gens);
   const cur = combined[combined.length - 1];
   const prev = combined.length > 1 ? combined[combined.length - 2] : null;
@@ -1019,7 +929,6 @@ function renderMetrics() {
     chartSVG(gens.map(g => g.id), combined, { maxY: 10, height: 260, fullLabels: true, markBest: true }),
   );
 
-  // ---- small multiples
   const keys = criterionKeys(gens);
   const smallMultiples = el("div", { class: "small-multiples" });
   for (const k of keys) {
@@ -1046,9 +955,6 @@ function renderMetrics() {
       smallMultiples,
     ),
   ));
-
-  // ---- VLM judge feedback placeholder
-  main.appendChild(renderVlmSection(gens));
 }
 
 function chartSVG(labels, values, opts) {
@@ -1059,7 +965,6 @@ function chartSVG(labels, values, opts) {
   const ys = values.map(v => pad.t + (height - pad.t - pad.b) * (1 - ((v ?? 0) / maxY)));
   const svg = svgNode("svg", { viewBox: `0 0 ${w} ${height}`, preserveAspectRatio: "none" });
 
-  // y grid
   const ticks = maxY === 1 ? [0, 0.25, 0.5, 0.75, 1] : [0, 2, 4, 6, 8, 10];
   for (const t of ticks) {
     const y = pad.t + (height - pad.t - pad.b) * (1 - t / maxY);
@@ -1074,7 +979,6 @@ function chartSVG(labels, values, opts) {
     svg.appendChild(lbl);
   }
 
-  // area + line
   if (values.some(v => v != null)) {
     const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
     const area = svgNode("polygon", {
@@ -1086,11 +990,9 @@ function chartSVG(labels, values, opts) {
     svg.appendChild(line);
   }
 
-  // best index (for combined chart marker)
   let best = -1, bv = -Infinity;
   if (markBest) values.forEach((v, i) => { if (v != null && v > bv) { bv = v; best = i; } });
 
-  // dots
   values.forEach((v, i) => {
     if (v == null) return;
     svg.appendChild(svgNode("circle", {
@@ -1104,7 +1006,6 @@ function chartSVG(labels, values, opts) {
     }
   });
 
-  // x labels
   labels.forEach((lab, i) => {
     const t = svgNode("text", { x: xs[i], y: height - 10, "text-anchor": "middle", class: "axis-tick" });
     t.textContent = lab.replace(/^gen-0*/, "gen ");
@@ -1112,28 +1013,6 @@ function chartSVG(labels, values, opts) {
   });
 
   return svg;
-}
-
-function renderVlmSection(gens) {
-  const wrap = el("section", { class: "vlm-section" },
-    el("div", { class: "head" },
-      el("h3", null, "VLM judge"),
-      el("span", { class: "badge" }, "not yet implemented"),
-    ),
-    el("p", { class: "body-lead", style: "margin-top:0" },
-      "When the VLM judge signal lands, each generation’s winner will get a one-sentence verdict here, alongside its taste / brief-adherence / hierarchy sub-scores."),
-  );
-  const list = el("div", { class: "vlm-list" });
-  for (const g of gens) {
-    const w = winnerOf(g);
-    list.appendChild(el("div", { class: "vlm-card" },
-      el("div", { class: "gen" }, g.id),
-      el("div", { class: "feedback" },
-        w?.combined != null ? `awaiting judge — saliency placed it at ${w.combined.toFixed(2)} / 10` : "awaiting judge"),
-    ));
-  }
-  wrap.appendChild(list);
-  return wrap;
 }
 
 // ============================================================
@@ -1172,10 +1051,10 @@ async function loadRun(rid) {
   STATE.runId = rid;
   const m = await jget(`/api/run/${rid}`);
   STATE.manifest = m;
-  STATE.scrubIndex = bestIndex(m.generations);  // start on the best gen
+  STATE.scrubIndex = bestIndex(m.generations);
   const bestGen = m.generations[STATE.scrubIndex];
   STATE.candIndex = Math.max(0, bestGen.candidates.findIndex(c => c.id === bestGen.winner));
-  STATE.showSaliency = false;
+  // NOTE: do NOT reset STATE.showSaliency — toggle is sticky across run switches too.
   const stat = document.getElementById("meta-stat");
   const wn = winnerOf(bestGen);
   stat.textContent = `${m.generations.length} gens · best ${bestGen.id} · ${wn?.combined?.toFixed(2) ?? "—"}`;

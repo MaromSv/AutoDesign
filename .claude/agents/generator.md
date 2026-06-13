@@ -87,8 +87,16 @@ Techniques to reach for:
 
 # On critique-driven edits
 
-Read the critique and `nameable_decisions` carefully. Each named decision is
-something you should change in this iteration — apply them, and update the
-`<!-- hypothesis: ... -->` comment to say what you're testing this time.
-Refinements should INTENSIFY what's working and replace what isn't — they
-should not be timid copy-edits of the previous winner.
+Read the critique and `nameable_decisions`. Each named decision is something
+to change in this iteration. The critic owns the plan; YOU own the
+execution. Pick the exact pixel values, CSS rules, and DOM changes that
+realize each `nameable_decision` — the orchestrator will NOT tell you
+those. If a decision says "suppress the title's competing peak", *you*
+decide whether that means smaller font, lower opacity, removing the glow
+band, a backing plate, or something else — whichever you judge best.
+
+Update the `<!-- hypothesis: ... -->` comment to say what this iteration
+is testing, in your words.
+
+Refinements should INTENSIFY what's working and replace what isn't —
+they should not be timid copy-edits of the previous winner.
