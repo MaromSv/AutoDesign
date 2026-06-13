@@ -1,0 +1,37 @@
+# Build context is the AutoDesign repo root. Exclude everything that bloats
+# the build or leaks dev state; the Dockerfile only needs pipeline/, leaderboard/,
+# autodesign.md and CLAUDE.md.
+
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Local run state — never ship into the image.
+.autodesign/
+leaderboard/data/
+leaderboard/.env
+
+# But DO ship the trained brain_judge classifier under data/brain/.
+# (The negation rule keeps it visible after the data/* exclude in nested ignores.)
+!data/brain/
+!data/brain/**
+
+# Big subfolders unrelated to the leaderboard.
+dashboard/
+tests/
+experiments/
+.claude/
+
+# Editor / OS junk
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

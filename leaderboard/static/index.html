@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoDesign — Public Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="brand">
+    <span class="dot"></span>AutoDesign<span class="sub">Leaderboard</span>
+  </div>
+  <div class="meta">
+    <span><strong id="m-done">0</strong> scored</span>
+  </div>
+</header>
+
+<main>
+
+  <section class="spread hero">
+    <div class="eyebrow">Public benchmark</div>
+    <h1 class="display">Submit a URL.<br>Rendered, judged, ranked.</h1>
+  </section>
+
+  <section class="spread submit">
+    <form id="submit-form" autocomplete="off">
+      <div class="row">
+        <label class="grow">
+          <span class="label-mono">URL</span>
+          <input name="url" type="text" required placeholder="https://example.com">
+        </label>
+        <label>
+          <span class="label-mono">Submitter <em>optional</em></span>
+          <input name="submitter" type="text" placeholder="anonymous">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit" id="submit-btn">Score it</button>
+        <span id="submit-status"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="spread queue">
+    <div class="row">
+      <div class="stat" data-status="queued">
+        <div class="lbl">Queued</div>
+        <div class="num" id="q-queued">0</div>
+      </div>
+      <div class="stat" data-status="running">
+        <div class="lbl">Running</div>
+        <div class="num" id="q-running">0</div>
+      </div>
+      <div class="stat" data-status="done">
+        <div class="lbl">Scored</div>
+        <div class="num" id="q-done">0</div>
+      </div>
+      <div class="stat" data-status="failed">
+        <div class="lbl">Failed</div>
+        <div class="num" id="q-failed">0</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="spread">
+    <div class="tabs">
+      <button class="tab active" data-tab="top">Top scores</button>
+      <button class="tab" data-tab="recent">Recent</button>
+    </div>
+    <div id="board-top" class="board active"></div>
+    <div id="board-recent" class="board"></div>
+  </section>
+
+</main>
+
+<div id="detail-modal" class="modal">
+  <div class="modal-card">
+    <button class="modal-close" id="modal-close" aria-label="Close">Close (esc)</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<footer>
+  <div>AutoDesign &middot; same scoring pipeline as the research loop</div>
+  <div>One at a time &middot; 1280&times;800 viewport</div>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

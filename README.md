@@ -1,47 +1,158 @@
-# AutoDesign
+# autodesign
 
-Scaffold for an evaluation-driven UI generator. A `/autodesign` loop produces candidate
-landing pages from a brief, scores each against a pluggable set of signals (saliency,
-VLM judge, code quality, task completion, embeddings), and evolves the winner across
-generations. A read-only dashboard reads run artifacts from disk.
+**benchmarking the slop out of AI.**
 
-This repository is currently a **scaffold**: directories, file stubs, and the
-interfaces that future implementations plug into. No real scoring, capture, evolution,
-or rendering logic exists yet.
+AI generates interfaces fast but almost all of it looks the same. Everyone can *feel*
+which UI is better. Nobody can *measure* it. AutoDesign is a benchmark and an agent loop
+that does. By Marom and Oliver.
 
-## How to run
+> Leaderboard: **[TODO: leaderboard URL]**
+
+![hero](docs/screenshots/hero.png)
+
+---
+
+## Why
+
+Karpathy framed *autoresearch* — agents that run their own experiments against a
+benchmark and climb it. The piece that was missing for **UIs** was the benchmark
+itself. There is no widely-accepted, automatic, multi-signal scoring rubric for
+generated web UI. Without one, every "AI website builder" converges to the same
+purple-gradient slop, because the only feedback signal is human vibes.
+
+We built the rubric, the scorer, and the agent loop that climbs it.
+
+![problem](docs/screenshots/problem.png)
+
+---
+
+## The benchmark (the part nobody had built)
+
+A composite score over **24 sub-metrics in 8 themed buckets**, weighted in
+[`autodesign.md`](autodesign.md). Three of those buckets are signals we
+implemented from scratch:
+
+| Bucket | Source | What's novel |
+|---|---|---|
+| **Attention** (`intent_alignment`, `focus_clarity`, `reading_order`) | DeepGaze saliency map | scan-path geometry derived from a pretrained gaze model — not just "is the CTA visible" |
+| **Motion** (`animation_focus`) | multi-frame saliency over a 5s capture | does the entrance *resolve* attention onto the CTA by the settled frame |
+| **Distinctiveness** (`creativity`, `originality`, `ai_pitfalls`, `brain_judge`) | VLM rubric + research agent + **a model we trained** | quantifies distance from AI-slop |
+| Hierarchy / color / type / usability | VLM-as-judge (Opus) | rubric-grounded principle scoring |
+| **Brief fidelity** (`prompt_consistency`) | Nemotron text check | every brief element actually shipped? |
+| **Function** (`stress_test`) | Nemotron + headless browser sub-agents | do buttons/links actually behave |
+
+### The model we trained: `brain_judge`
+
+A perceptual classifier (RBF SVM, **CV-AUC 0.85**) over clutter, colorfulness,
+whitespace, contrast, symmetry, and hue-entropy, trained on awwwards winners
+(masterpiece) vs. madewithlovable (slop). Plugs in as a single `Signal`.
+[`pipeline/brain/`](pipeline/brain/).
+
+![slop-vs-masterpiece](docs/screenshots/slop_vs_masterpiece.png)
+
+---
+
+## The agent loop
+
+```
+brief ──> generator (sonnet) ──> capture (headless chromium, 5 frames)
+              ▲                              │
+              │                              ▼
+         critic (sonnet)  <──  signals  ──> scores.json
+              ▲                              │
+              └─── refinement plan ──────────┘
+```
+
+- **One file owns behavior** — [`autodesign.md`](autodesign.md). YAML at the bottom
+  drives the brief, model tiers, signal weights, focal bbox, and capture.
+- **Signals are pluggable.** New evaluation = new file in
+  [`pipeline/signals/`](pipeline/signals/) + a line in `criteria:`.
+- **Critic owns the plan, generator executes.** Critic reads `scores.json` +
+  `saliency.png`, picks the 1–3 lowest sub-scores, emits surgical
+  `nameable_decisions` (selector, property, target value). Stops system-level
+  rewrites that tank everything at once.
+- **Disk-as-contract.** Loop only writes to `.autodesign/runs/<id>/`. Dashboard
+  only reads. They never share memory; runs are fully replayable.
+
+![loop](docs/screenshots/loop.png)
+
+---
+
+## Cost / quality trade-offs
+
+Every signal and agent gets the *cheapest model that still works* for that job.
+This is wired in [`autodesign.md`](autodesign.md) → `models:` and per-signal
+overrides, not hard-coded.
+
+| Job | Model | Why |
+|---|---|---|
+| In-loop UI generation | **Sonnet** | needs taste, but called every iteration |
+| Critic refinement plan | **Sonnet** | structured reasoning over scores.json |
+| Final VLM judge (visual rubric) | **Opus** | most consequential signal, run once per candidate |
+| Persona reactions | **Haiku** | cheap, called often |
+| Brief-presence text check (`prompt_consistency`) | **Nemotron** (Nebius Token Factory) | pure text comparison — no need to pay frontier rates |
+| Headless-browser stress test sub-agents | **Nemotron** | many short tool-call turns; cost adds up fast |
+| Slop classifier (`brain_judge`) | **local sklearn** | no API call at all |
+
+The Nemotron pair runs on Nebius Token Factory's OpenAI-compatible endpoint;
+both signals **skip cleanly** if `NEBIUS_API_KEY` is unset, so the loop degrades
+gracefully instead of failing.
+
+### Parallel sub-agents
+
+The `stress_test` signal spawns **N independent Nemotron personas** (first-time
+visitor, link auditor, form tester) that each drive a separate headless browser
+through `list / click / type / read / back` tool calls and report findings.
+Scores are merged. Parallel where the work is independent; sequential where
+it isn't.
+
+---
+
+## Agent collaboration
+
+Each reasoning role is a separate Claude Code sub-agent in [`.claude/agents/`](.claude/agents/),
+with its own system prompt and its own model tier in frontmatter:
+
+- **`generator`** (sonnet) — builds the HTML
+- **`critic`** (sonnet) — reads scores, plans the next iteration
+- **`judge`** (opus) — final VLM rubric pass
+- **`persona`** (haiku) — fast gut-reaction signal
+
+Roles are *independently swappable*. Change the model for one role without
+touching the others.
+
+---
+
+## Run it
 
 ```bash
 pip install -r requirements.txt
-python -c "import pipeline, pipeline.signals"   # all signal stubs self-register
-python -m pytest tests/test_scaffold.py         # smoke test
-python dashboard/serve.py                        # empty-state dashboard
+
+# in Claude Code:
+/autodesign
 ```
 
-## Extensibility contract
+The loop reads [`autodesign.md`](autodesign.md), generates a candidate,
+refines it across iterations, and stops at `loop.target_score` (default 9.0)
+or `loop.iterations`.
 
-The scaffold is designed so common changes touch exactly one place:
+Inspect runs:
 
-- **Add an evaluation**: drop a new file in `pipeline/signals/<name>.py` with a class
-  decorated by `@register_signal` whose `key` matches a new entry in the
-  `criteria:` block of `autodesign.md`. Nothing else changes — `pipeline/signals/__init__.py`
-  auto-imports the module, the registry picks it up, and the benchmark combiner runs
-  it whenever the key is in config.
-- **Swap or restyle the UI**: edit only `dashboard/`. It consumes the
-  `GET /api/run/<id>` manifest contract and the `.autodesign/runs/<id>/` directory
-  layout, nothing else.
-- **Change models / cost tiers**: edit the `models:` block in `autodesign.md` and the
-  frontmatter of `.claude/agents/*.md`. No code changes.
+```bash
+python dashboard/serve.py    # read-only dashboard on .autodesign/runs/
+```
 
-## Architecture invariants
+![dashboard](docs/screenshots/dashboard.png)
 
-1. **Pluggable evaluations.** Every signal implements the `Signal` protocol and
-   self-registers via `@register_signal`.
-2. **Engine / presentation decoupling.** The loop only writes artifacts to disk; the
-   dashboard only reads them through the manifest API.
-3. **Disk-as-contract.** All run state lives under `.autodesign/runs/<id>/`. No
-   in-memory passing between the loop and the UI. Runs are replayable.
-4. **Config-driven.** Behavior comes from the yaml block in `autodesign.md`. No
-   hardcoded weights or model names in code.
-5. **Model-tiering ready.** Each agentic step is a separate Claude Code subagent so
-   models can be assigned independently.
+---
+
+## Repo map
+
+- [`autodesign.md`](autodesign.md) — control surface (brief + yaml config)
+- [`pipeline/`](pipeline/) — engine, signal registry, capture
+- [`pipeline/signals/`](pipeline/signals/) — pluggable evaluations
+- [`pipeline/brain/`](pipeline/brain/) — the trained slop classifier
+- [`.claude/agents/`](.claude/agents/) — generator / critic / judge / persona
+- [`.claude/skills/autodesign/`](.claude/skills/autodesign/) — loop protocol
+- [`dashboard/`](dashboard/) — read-only run viewer
+- [`leaderboard/`](leaderboard/) — public leaderboard site
