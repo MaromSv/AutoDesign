@@ -30,10 +30,12 @@ brief: |
   TODO: paste the design brief here, or leave blank to use the prose above.
 
 loop:
-  initial_candidates: 5    # number of siblings to generate in gen-0 (the wide first pass)
+  initial_candidates: 1    # candidates to generate in gen-0. 1 = build a single UI and then
+                           # continuously refine that one page every generation (no gen-0 fan-out).
+                           # Raise it to explore several distinct starting directions in parallel.
   iterations: 10           # max refinement generations after gen-0 (each iterates the previous winner)
   target_score: 9.0        # stop early when the best combined score meets/exceeds this
-  diversity: 0.35          # minimum embedding distance required between gen-0 siblings (placeholder)
+  diversity: 0.35          # min embedding distance between gen-0 siblings (only relevant when initial_candidates > 1)
 
 models:
   # Cost tiers. Cheaper models for fast inner-loop work, opus for the final judge.
@@ -97,8 +99,8 @@ originality:
   # Fully optional: with no ANTHROPIC_API_KEY / Playwright it no-ops. In `rank`, enable
   # with --references (the agent infers each site's use case from the URL).
   enabled:      true
-  n_references: 5      # peer screenshots to keep (caps the expensive render step)
-  n_candidates: 10     # URLs the agent returns; we over-fetch then keep what renders
+  n_references: 5      # how many similar sites to look for AND keep (keep all that render; 0 found is fine)
+  max_workers:  5      # peers are captured in parallel; cap simultaneous headless browsers
   # search_model: claude-opus-4-8   # pin the research model (defaults to models.judge)
 
 nemotron:

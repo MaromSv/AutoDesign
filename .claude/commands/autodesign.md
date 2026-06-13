@@ -1,5 +1,5 @@
 ---
-description: Generate 5 diverse candidate UIs for a brief, pick the best, then iteratively refine that winner under .autodesign/runs/<id>/
+description: Build candidate UI(s) for a brief (loop.initial_candidates; default 1 = one UI, continuously refined), then iteratively improve under .autodesign/runs/<id>/
 argument-hint: <brief — what UI to build>
 ---
 
@@ -15,7 +15,7 @@ The architecture is in [CLAUDE.md](../../CLAUDE.md). The control surface is
 ## The shape of the loop
 
 ```
-brief --> [gen-0: build 5 different UIs] --> score all 5 --> pick winner
+brief --> [gen-0: build loop.initial_candidates UI(s)] --> score --> pick winner
                                                                  |
                                                                  v
                             [gen-N>=1: refine the winner] <-- critique
@@ -27,8 +27,11 @@ brief --> [gen-0: build 5 different UIs] --> score all 5 --> pick winner
                                  final.html + design_journey.html
 ```
 
-The first generation fans out (5 meaningfully different design hypotheses). Every
-generation after that is a single critique-driven refinement of the previous
+Gen-0 builds `loop.initial_candidates` candidate(s). The default is **1**: build a
+single UI and then continuously refine that one page every generation (no gen-0
+fan-out — the lone candidate is trivially the winner). Set `initial_candidates > 1`
+to fan out into several distinct starting directions and pick the best. Every
+generation after gen-0 is a single critique-driven refinement of the previous
 winner. The dashboard reads `.autodesign/runs/<id>/` to render the run.
 
 ## Setup
@@ -56,7 +59,7 @@ winner. The dashboard reads `.autodesign/runs/<id>/` to render the run.
    ```
 
    From the printed JSON extract: `run_id`, `run_dir`, and from `config`:
-   - `loop.initial_candidates` — how many siblings for gen-0 (default 5).
+   - `loop.initial_candidates` — how many candidates for gen-0 (default 1).
    - `loop.iterations` — how many refinement generations after gen-0.
    - `loop.target_score` — stop early when best `combined` ≥ this.
    - `criteria` — signal keys + weights for `pipeline/benchmark.py`.
@@ -65,10 +68,12 @@ winner. The dashboard reads `.autodesign/runs/<id>/` to render the run.
 
 2. **Persist the brief** to `<run_dir>/brief.txt`.
 
-## Generation 0 — fan out
+## Generation 0 — seed (or fan out)
 
-Generate `loop.initial_candidates` (default **5**) meaningfully different candidates.
-Make the variants differ on at least three axes:
+Generate `loop.initial_candidates` (default **1**) candidate(s). With the default of 1,
+build a single strong candidate (`cand-00`) — it becomes the seed that every later
+generation refines. When `initial_candidates > 1`, make the variants meaningfully
+different on at least three axes:
 
 - Layout (asymmetric left-hero / symmetric bold / editorial columns / illustration-led / minimal grid)
 - Primary focal element (typography hero / product preview / illustration / data)
@@ -100,8 +105,9 @@ Inline all CSS. No external assets beyond Google Fonts. Viewport-ready for
 the configured size (default 1280×800). The generator MAY embed the
 hypothesis as an html comment at the top of the file.
 
-You may spawn the 5 generator calls in **parallel** (one message, multiple Agent
-tool calls) — they are independent.
+When generating more than one candidate, spawn the generator calls in **parallel**
+(one message, multiple Agent tool calls) — they are independent. With the default of
+1, this is just a single generator call.
 
 **c. Capture frames** for each candidate:
 
@@ -169,13 +175,13 @@ append_lineage(lineage_path('<run_id>'), {
     'generation': 0,
     'combined': <combined_or_None>,
     'winner': 'cand-NN',
-    'changed': 'gen-0 fan-out: <one line per sibling hypothesis>',
+    'changed': 'gen-0 seed: <the candidate's hypothesis> (or, if fanned out, one line per sibling)',
     'answered_critique': '',
 })
 "
 ```
 
-**g. Report to the user.** One line: `gen-000: 5 candidates | winner=cand-NN | combined=<n> | <continuing|stopping>`.
+**g. Report to the user.** One line: `gen-000: <N> candidate(s) | winner=cand-NN | combined=<n> | <continuing|stopping>` (N = loop.initial_candidates).
 
 ## Generations 1..N — refine the winner
 
