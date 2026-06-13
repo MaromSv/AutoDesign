@@ -141,9 +141,6 @@ Inspect runs:
 ```bash
 python dashboard/serve.py    # read-only dashboard on .autodesign/runs/
 ```
-
-![dashboard](docs/screenshots/dashboard.png)
-
 ---
 
 ## Repo map
