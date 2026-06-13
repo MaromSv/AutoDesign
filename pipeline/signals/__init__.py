@@ -11,7 +11,9 @@ NOTE: this `brain` branch includes brain_judge (heavy TRIBE-v2 deps). `main` doe
 """
 
 from pipeline.signals import brain_judge  # noqa: F401
+from pipeline.signals import prompt_consistency  # noqa: F401
 from pipeline.signals import saliency  # noqa: F401
+from pipeline.signals import stress_test  # noqa: F401
 from pipeline.signals import vlmjudge  # noqa: F401
 
-__all__ = ["brain_judge", "saliency", "vlmjudge"]
+__all__ = ["brain_judge", "prompt_consistency", "saliency", "stress_test", "vlmjudge"]

@@ -170,22 +170,11 @@ def _print_verdict(records: list[dict]) -> None:
 
 
 def _load_dotenv(path: str | Path) -> None:
-    """Populate os.environ from a `.env` file (KEY=VALUE lines) without overwriting
-    anything already set. Minimal — no quoting/expansion magic, no extra dependency.
-    Lets `ANTHROPIC_API_KEY=...` in AutoDesign/.env flow to the judge automatically."""
-    import os
-
-    p = Path(path)
-    if not p.exists():
-        return
-    for line in p.read_text(encoding="utf-8").splitlines():
-        s = line.strip()
-        if not s or s.startswith("#") or "=" not in s:
-            continue
-        key, _, val = s.partition("=")
-        key, val = key.strip(), val.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = val
+    """Populate os.environ from a `.env` (KEY=VALUE lines), not overwriting set keys.
+    Thin wrapper over the shared loader so `ANTHROPIC_API_KEY` / `NEBIUS_API_KEY` in
+    AutoDesign/.env flow to the signals automatically."""
+    from pipeline.envfile import load_dotenv
+    load_dotenv(path)
 
 
 def main(argv: list[str] | None = None) -> int:

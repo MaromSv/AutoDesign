@@ -79,6 +79,11 @@ def build_context(
     that don't use distinctiveness (and existing tests) are unaffected.
     """
     candidate_dir, html_path, code_text = _resolve_paths(candidate)
+    # Resolve the *real* brief: a placeholder/empty `brief` (the shipped "TODO: paste..."
+    # default) falls back to the run's brief.txt, then the prose `## Brief`. And pull this
+    # candidate's own generation directive from its `<!-- hypothesis: ... -->` comment.
+    from pipeline.brief import extract_hypothesis, resolve_brief
+    brief = resolve_brief(brief, candidate_dir)
     return CandidateContext(
         candidate_dir=candidate_dir,
         html_path=html_path,
@@ -89,6 +94,7 @@ def build_context(
         config=config,
         references=list(references or []),
         topic=topic,
+        generation_prompt=extract_hypothesis(code_text),
     )
 
 

@@ -33,6 +33,12 @@ class CandidateContext:
     # unavailable, or finds nothing — signals must treat both as optional.
     references: list[Path] = field(default_factory=list)
     topic: str = ""
+    # The per-candidate generation prompt: the specific design directive this candidate was
+    # built to test (e.g. the gen-0 `hypothesis`, or the refinement feedback for later gens),
+    # as opposed to `brief` which is the run-wide goal shared by every candidate. Populated by
+    # `benchmark.build_context` from the `<!-- hypothesis: ... -->` comment in the HTML when
+    # present; empty otherwise. The `prompt_consistency` signal checks the build against both.
+    generation_prompt: str = ""
     # TODO: add fields as new signals need them (focal_bbox, viewport, persona, etc.).
     # Keep additions backwards-compatible (default values) so older signals keep working.
 

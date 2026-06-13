@@ -75,8 +75,11 @@ class BrainJudgeSignal:
                 "encoder_backend": tribe_encoder.active_backend(),
                 "model": str(model_path),
                 "interpretation": (
-                    "P(predicted brain activity resembles a known-good website "
-                    "vs AI slop), mapped to 0-10."
+                    "P(this UI resembles a known-good website vs AI slop), mapped "
+                    "to 0-10. With the perceptual-fallback backend this reflects "
+                    "perceptual design stats (clutter/colour/whitespace/symmetry/…), "
+                    "NOT real predicted brain activity — that arrives only when a "
+                    "real TRIBE-v2 backend is configured."
                 ),
             },
         )

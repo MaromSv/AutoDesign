@@ -436,6 +436,34 @@
       font-family: var(--serif); font-size: 17px; font-style: italic;
       color: var(--ink-2); margin-top: 8px; line-height: 1.45;
     }
+    .vlm-card .issues-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-3);
+      margin-top: 16px; margin-bottom: 8px;
+    }
+    .vlm-issue {
+      margin-top: 10px; padding-left: 12px;
+      border-left: 2px solid var(--rule);
+    }
+    .vlm-issue.sev-high   { border-left-color: var(--accent); }
+    .vlm-issue.sev-medium { border-left-color: var(--ink-3); }
+    .vlm-issue .where {
+      font-family: var(--mono); font-size: 11px; color: var(--ink);
+    }
+    .vlm-issue .sev {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3); margin-left: 6px;
+    }
+    .vlm-issue.sev-high .sev { color: var(--accent); }
+    .vlm-issue .problem {
+      font-family: var(--serif); font-size: 14px; color: var(--ink-2);
+      line-height: 1.4; margin-top: 3px;
+    }
+    .vlm-issue .fix {
+      font-family: var(--serif); font-size: 14px; font-style: italic;
+      color: var(--ink); line-height: 1.4; margin-top: 3px;
+    }
+    .vlm-issue .fix::before { content: "→ "; color: var(--accent); font-style: normal; }
 
     /* svg chart helpers */
     .axis-line { stroke: var(--rule); stroke-width: 1; opacity: 0.45; }
@@ -466,6 +494,139 @@
       width: 100%; height: 100%; background: white;
       border: 1px solid var(--rule);
     }
+
+    /* ---- signal explainer sections (metrics page) ---------------------- */
+    /* One per new criterion: a header + a plain-English "what it grades on"
+       lead, then per-generation cards showing the evidence behind the score. */
+    .signal-section {
+      max-width: 1500px; margin: 0 auto; padding: 36px 48px 8px;
+      border-top: 1px solid var(--rule);
+    }
+    .signal-section .head {
+      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
+    }
+    .signal-section h3 { margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 500; }
+    .signal-section .badge {
+      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+      border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 99px;
+    }
+    .signal-section .badge.live { border-color: var(--accent); color: var(--accent); }
+    .signal-lead {
+      font-family: var(--serif); font-size: 17px; font-style: italic;
+      color: var(--ink-2); margin: 0 0 8px; max-width: 72ch; line-height: 1.45;
+    }
+    .signal-grades {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+      letter-spacing: 0.03em; margin: 0 0 22px; max-width: 78ch; line-height: 1.55;
+    }
+    .signal-grades b { color: var(--ink-2); font-weight: 600; }
+
+    .gen-cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+    .gen-card { padding: 18px; border: 1px solid var(--rule); background: var(--paper-2); }
+    .gen-card .gen-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 12px;
+    }
+    .gen-card .gen-top .g {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .gen-card .gen-top .score {
+      font-family: var(--serif); font-size: 24px; font-weight: 500; color: var(--ink); line-height: 1;
+    }
+    .gen-card .gen-top .score sup { font-size: 11px; color: var(--ink-3); font-weight: 400; margin-left: 2px; }
+    .empty-inline {
+      font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-3); padding: 4px 0;
+    }
+
+    /* requirement checklist (prompt consistency) */
+    .req-group-label {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-3); margin: 14px 0 6px;
+    }
+    .req-group-label:first-of-type { margin-top: 2px; }
+    .reqs { display: grid; gap: 6px; }
+    .req { display: flex; gap: 9px; align-items: baseline; font-size: 13.5px; line-height: 1.4; }
+    .req .mark { font-family: var(--mono); font-size: 12px; flex: none; width: 13px; text-align: center; }
+    .req.met    { color: var(--ink-2); } .req.met .mark    { color: var(--good); }
+    .req.miss   { color: var(--ink);   } .req.miss .mark   { color: var(--bad); font-weight: 600; }
+    .req.contra { color: var(--ink);   } .req.contra .mark { color: var(--accent); font-weight: 600; }
+    .rationale {
+      font-family: var(--serif); font-style: italic; font-size: 14px;
+      color: var(--ink-2); margin-top: 14px; line-height: 1.45;
+    }
+
+    /* summary stat chips (stress test) */
+    .stat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    .stat-chip {
+      font-family: var(--mono); font-size: 11px; padding: 4px 9px;
+      border: 1px solid var(--rule); color: var(--ink-2); background: var(--paper);
+    }
+    .stat-chip strong { color: var(--ink); }
+    .stat-chip.warn { border-color: var(--accent); color: var(--accent); }
+    .stat-chip.warn strong { color: var(--accent); }
+    .note-block { font-family: var(--serif); font-size: 14px; color: var(--ink-2); line-height: 1.45; margin-top: 12px; }
+    .note-block .lbl {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 3px;
+    }
+
+    /* severity-tagged issue (shared by stress test) */
+    .sig-issue { margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--rule); }
+    .sig-issue.sev-critical { border-left-color: var(--bad); }
+    .sig-issue.sev-high     { border-left-color: var(--accent); }
+    .sig-issue.sev-medium   { border-left-color: var(--ink-3); }
+    .sig-issue.sev-low      { border-left-color: var(--ink-3); opacity: 0.85; }
+    .sig-issue .sev {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3); margin-right: 7px;
+    }
+    .sig-issue.sev-critical .sev { color: var(--bad); }
+    .sig-issue.sev-high .sev { color: var(--accent); }
+    .sig-issue .desc { font-family: var(--serif); font-size: 14px; color: var(--ink-2); line-height: 1.4; }
+
+    /* persona row (stress test subagent mode) */
+    .persona { margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--rule); }
+    .persona.ok   { border-left-color: var(--good); }
+    .persona.fail { border-left-color: var(--bad); }
+    .persona .pname { font-family: var(--mono); font-size: 11px; color: var(--ink); }
+    .persona .pgoal-met {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
+      text-transform: uppercase; margin-left: 8px;
+    }
+    .persona.ok .pgoal-met   { color: var(--good); }
+    .persona.fail .pgoal-met { color: var(--bad); }
+    .persona .psum {
+      font-family: var(--serif); font-size: 13.5px; font-style: italic;
+      color: var(--ink-2); margin-top: 2px; line-height: 1.4;
+    }
+
+    /* brain / design classifier: P(good) bar + feature legend */
+    .pgood-bar {
+      height: 24px; background: var(--paper); border: 1px solid var(--rule);
+      position: relative; overflow: hidden;
+    }
+    .pgood-bar .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); opacity: 0.78; transition: width 300ms ease; }
+    .pgood-bar .mid  { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--rule); opacity: 0.6; }
+    .pgood-bar .txt  {
+      position: absolute; inset: 0; display: flex; align-items: center; padding-left: 10px;
+      font-family: var(--mono); font-size: 11px; color: var(--ink);
+    }
+    .feature-grid {
+      display: grid; gap: 5px 20px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      margin: 0 0 4px; padding: 16px 18px; border: 1px solid var(--rule); background: var(--paper-2);
+    }
+    .feature-grid .f {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+      display: flex; justify-content: space-between; gap: 12px;
+      border-bottom: 1px dotted var(--ink-3); padding: 3px 0;
+    }
+    .feature-grid .f .fk { color: var(--ink-3); text-align: right; }
+    .backend-note {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+      color: var(--ink-3); margin-top: 8px;
+    }
+    .backend-note.fallback { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -522,6 +683,10 @@ const SUB_LABELS = {
   focus_clarity:      "focus clarity",
   reading_order:      "reading order",
   animation_focus:    "animation focus",
+  // new top-level criteria (each is also explained in its own metrics section)
+  prompt_consistency: "brief adherence",
+  stress_test:        "interaction QA",
+  brain_judge:        "design classifier",
   // legacy keys (left in so historical runs still pretty-print)
   hero_pull:          "hero pull",
   focal_dominance:    "focal dominance",
@@ -857,7 +1022,45 @@ function explanationFor(cand, c) {
   if (!det) return null;
   const ex = det.explanations;
   if (ex && typeof ex[c.key] === "string") return ex[c.key];
+  // VLM judge: the per-principle `reason` is its plain-English explanation.
+  const pp = det.per_principle;
+  if (pp && pp[c.key] && typeof pp[c.key].reason === "string") return pp[c.key].reason;
+  // Nemotron signals carry their own narrative fields.
+  if (c.source === "stress_test") {
+    if (det.consistency_notes || det.function_notes) return det.consistency_notes || det.function_notes;
+    const i0 = det.issues && det.issues[0];
+    if (i0) return typeof i0 === "string" ? i0 : (i0.description || null);  // issues may be strings OR {severity, description}
+    return null;
+  }
+  if (c.source === "prompt_consistency")
+    return det.rationale || (det.missing && det.missing.length ? "Missing: " + det.missing[0] : null);
+  if (c.source === "brain_judge") {
+    const p = det.p_good;
+    if (typeof p === "number")
+      return `Looks ${(p * 100).toFixed(0)}% like an award-winning site vs AI slop — perceptual classifier, not real brain data.`;
+    return det.interpretation || null;
+  }
   return null;
+}
+
+// --- helpers shared by the per-signal metrics sections -----------------
+/** A signal's free-form `details` object for a candidate, or null. */
+function signalDet(cand, key) { return cand?.details?.[key]?.details || null; }
+/** True if ANY candidate in the run carries details for this signal. */
+function signalActiveAnywhere(gens, key) {
+  return gens.some(g => g.candidates.some(c => signalDet(c, key)));
+}
+/** A criterion's score on the 0–10 scale (per_criterion is 0–10; flat criteria are 0–1). */
+function critScore10(cand, key) {
+  if (cand?.per_criterion && typeof cand.per_criterion[key] === "number") return cand.per_criterion[key];
+  const c = (cand?.criteria || []).find(x => x.key === key);
+  return (c && typeof c.score === "number") ? c.score * 10 : null;
+}
+/** A `<span class="score">N.NN /10</span>` node (or em-dash when missing). */
+function scoreSpan(v) {
+  const s = el("span", { class: "score" });
+  if (v == null) { s.append("—"); } else { s.append(v.toFixed(2)); s.appendChild(el("sup", null, "/10")); }
+  return s;
 }
 
 /* Current candidate on the stage. */
@@ -1047,8 +1250,11 @@ function renderMetrics() {
     ),
   ));
 
-  // ---- VLM judge feedback placeholder
+  // ---- per-signal explainer sections: what each criterion grades & why
   main.appendChild(renderVlmSection(gens));
+  const pc = renderPromptConsistencySection(gens); if (pc) main.appendChild(pc);
+  const st = renderStressTestSection(gens); if (st) main.appendChild(st);
+  main.appendChild(renderBrainJudgeSection(gens));  // always shown — explains what it grades on
 }
 
 function chartSVG(labels, values, opts) {
@@ -1115,23 +1321,217 @@ function chartSVG(labels, values, opts) {
 }
 
 function renderVlmSection(gens) {
+  // Read the VLM judge's own output (critique + pinpointed issues) for a winner.
+  // It lives under raw.vlm_judge.details, NOT the candidate-level critique
+  // (which the loop reserves for the critic agent).
+  const vlmOf = w => w?.details?.vlm_judge?.details || null;
+  const anyJudged = gens.some(g => vlmOf(winnerOf(g)));
+
   const wrap = el("section", { class: "vlm-section" },
     el("div", { class: "head" },
       el("h3", null, "VLM judge"),
-      el("span", { class: "badge" }, "not yet implemented"),
+      el("span", { class: "badge" }, anyJudged ? "per-generation feedback" : "not yet run"),
     ),
     el("p", { class: "body-lead", style: "margin-top:0" },
-      "When the VLM judge signal lands, each generation’s winner will get a one-sentence verdict here, alongside its taste / brief-adherence / hierarchy sub-scores."),
+      anyJudged
+        ? "Each generation’s winner, as the vision judge saw it: its two-sentence verdict and the specific, located issues the next round should fix (worst first)."
+        : "When the VLM judge signal runs, each generation’s winner will get a verdict here alongside its pinpointed issues."),
   );
   const list = el("div", { class: "vlm-list" });
   for (const g of gens) {
     const w = winnerOf(g);
-    list.appendChild(el("div", { class: "vlm-card" },
-      el("div", { class: "gen" }, g.id),
-      el("div", { class: "feedback" },
-        w?.combined != null ? `awaiting judge — saliency placed it at ${w.combined.toFixed(2)} / 10` : "awaiting judge"),
-    ));
+    const vlm = vlmOf(w);
+    const card = el("div", { class: "vlm-card" }, el("div", { class: "gen" }, g.id));
+
+    if (!vlm) {
+      card.appendChild(el("div", { class: "feedback" },
+        w?.combined != null ? `awaiting judge — placed at ${w.combined.toFixed(2)} / 10` : "awaiting judge"));
+      list.appendChild(card);
+      continue;
+    }
+
+    if (vlm.critique) card.appendChild(el("div", { class: "feedback" }, "“" + vlm.critique + "”"));
+
+    const issues = Array.isArray(vlm.issues) ? vlm.issues : [];
+    if (issues.length) {
+      card.appendChild(el("div", { class: "issues-label" }, `${issues.length} issue${issues.length > 1 ? "s" : ""} to fix`));
+      for (const it of issues) {
+        const sev = (it.severity || "medium").toLowerCase();
+        const issueEl = el("div", { class: `vlm-issue sev-${sev}` });
+        issueEl.appendChild(el("div", { class: "where" },
+          it.where || "(unspecified)",
+          el("span", { class: "sev" }, sev),
+        ));
+        if (it.problem) issueEl.appendChild(el("div", { class: "problem" }, it.problem));
+        if (it.fix) issueEl.appendChild(el("div", { class: "fix" }, it.fix));
+        card.appendChild(issueEl);
+      }
+    } else if (vlm.critique) {
+      card.appendChild(el("div", { class: "issues-label" }, "no issues flagged"));
+    }
+    list.appendChild(card);
   }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+// ------------------------------------------------------------
+// per-signal explainer sections (one per newer criterion)
+// Each answers two questions for the user: WHAT is this criterion
+// grading, and WHY did each generation get the score it got.
+// ------------------------------------------------------------
+
+/* prompt_consistency — Nemotron text check of the build vs the brief. */
+function renderPromptConsistencySection(gens) {
+  if (!signalActiveAnywhere(gens, "prompt_consistency")) return null;
+  const wrap = el("section", { class: "signal-section" },
+    el("div", { class: "head" },
+      el("h3", null, "Brief adherence"),
+      el("span", { class: "badge live" }, "Nemotron · text check")),
+    el("p", { class: "signal-lead" },
+      "Does the build actually contain everything the brief asked for? A Nemotron model reads the generated page against the prompt and itemises what's present, what's missing, and anything that contradicts the brief — independent of how it looks."),
+    el("p", { class: "signal-grades", html:
+      "<b>Grades on:</b> presence of every requested element &amp; feature (content, not visuals). Each requirement is checked off, flagged missing, or flagged as a contradiction." }),
+  );
+  const list = el("div", { class: "gen-cards" });
+  const group = (cls, mark, label, items) => {
+    if (!items || !items.length) return null;
+    const reqs = el("div", { class: "reqs" });
+    items.forEach(r => reqs.appendChild(el("div", { class: `req ${cls}` }, el("span", { class: "mark" }, mark), el("span", null, r))));
+    return el("div", null, el("div", { class: "req-group-label" }, `${label} · ${items.length}`), reqs);
+  };
+  for (const g of gens) {
+    const w = winnerOf(g);
+    const det = signalDet(w, "prompt_consistency");
+    const card = el("div", { class: "gen-card" },
+      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "prompt_consistency"))));
+    if (!det) {
+      card.appendChild(el("div", { class: "empty-inline" }, "not scored in this run"));
+    } else {
+      [group("met", "✓", "met", det.matched),
+       group("miss", "✗", "missing", det.missing),
+       group("contra", "⚠", "contradictions", det.contradictions)].forEach(n => n && card.appendChild(n));
+      if (det.rationale) card.appendChild(el("div", { class: "rationale" }, "“" + det.rationale + "”"));
+    }
+    list.appendChild(card);
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/* stress_test — agentic / heuristic interaction QA in a real browser. */
+function renderStressTestSection(gens) {
+  if (!signalActiveAnywhere(gens, "stress_test")) return null;
+  const wrap = el("section", { class: "signal-section" },
+    el("div", { class: "head" },
+      el("h3", null, "Interaction QA"),
+      el("span", { class: "badge live" }, "agentic stress test")),
+    el("p", { class: "signal-lead" },
+      "Do the buttons and links actually work? Persona agents (or a deterministic probe) drive the real page in a headless browser — clicking, typing, navigating — and report what's broken. Pure behaviour: it ignores looks and copy."),
+    el("p", { class: "signal-grades", html:
+      "<b>Grades on:</b> whether interactive elements respond and behave consistently — dead links, missing handlers, JS console errors, broken forms." }),
+  );
+  const list = el("div", { class: "gen-cards" });
+  for (const g of gens) {
+    const w = winnerOf(g);
+    const det = signalDet(w, "stress_test");
+    const card = el("div", { class: "gen-card" },
+      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "stress_test"))));
+    if (!det) { card.appendChild(el("div", { class: "empty-inline" }, "not scored in this run")); list.appendChild(card); continue; }
+
+    // heuristic-probe mode: a counts summary
+    const s = det.summary;
+    if (s && typeof s === "object") {
+      const chips = el("div", { class: "stat-chips" });
+      const add = (label, val, warn) => { if (val == null) return; chips.appendChild(el("div", { class: `stat-chip ${warn ? "warn" : ""}` }, label + " ", el("strong", null, String(val)))); };
+      add("interactive", s.n_interactive);
+      add("dead", s.n_dead, s.n_dead > 0);
+      add("clicked", s.n_clicked);
+      add("console errors", s.n_with_console_errors, s.n_with_console_errors > 0);
+      if (chips.childNodes.length) card.appendChild(chips);
+    }
+
+    // subagent mode: one row per persona
+    if (Array.isArray(det.personas)) {
+      det.personas.forEach(p => {
+        const ok = p.goal_achieved ? "ok" : "fail";
+        const row = el("div", { class: `persona ${ok}` },
+          el("div", null,
+            el("span", { class: "pname" }, p.persona || p.name || "persona"),
+            el("span", { class: "pgoal-met" }, p.goal_achieved ? "goal met" : "goal failed")));
+        if (p.summary) row.appendChild(el("div", { class: "psum" }, p.summary));
+        card.appendChild(row);
+      });
+    }
+
+    // issues — may be plain strings OR {severity, description}
+    const issues = Array.isArray(det.issues) ? det.issues : [];
+    if (issues.length) {
+      card.appendChild(el("div", { class: "req-group-label" }, `issues · ${issues.length}`));
+      issues.slice(0, 8).forEach(it => {
+        const obj = it && typeof it === "object";
+        const sev = ((obj ? it.severity : null) || "medium").toLowerCase();
+        const desc = obj ? (it.description || JSON.stringify(it)) : String(it);
+        card.appendChild(el("div", { class: `sig-issue sev-${sev}` },
+          el("span", { class: "sev" }, sev), el("span", { class: "desc" }, desc)));
+      });
+    }
+
+    if (det.function_notes) card.appendChild(el("div", { class: "note-block" }, el("span", { class: "lbl" }, "function"), det.function_notes));
+    if (det.consistency_notes) card.appendChild(el("div", { class: "note-block" }, el("span", { class: "lbl" }, "consistency"), det.consistency_notes));
+    list.appendChild(card);
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/* brain_judge — the perceptual "design classifier". Always rendered (even with
+   no data yet) so the user can see what it grades on now that it's enabled. */
+function renderBrainJudgeSection(gens) {
+  const active = signalActiveAnywhere(gens, "brain_judge");
+  const wrap = el("section", { class: "signal-section" },
+    el("div", { class: "head" },
+      el("h3", null, "Design classifier"),
+      el("span", { class: `badge ${active ? "live" : ""}` }, active ? "perceptual model" : "awaiting first run")),
+    el("p", { class: "signal-lead" },
+      "A classifier (RBF SVM, cross-validated AUC 0.85) trained on award-winning sites versus mass-produced AI slop. It reads the screenshot's perceptual fingerprint and returns the probability the design belongs with the good set."),
+    el("p", { class: "signal-grades", html:
+      "<b>Grades on:</b> perceptual design statistics — clutter, colour discipline, contrast, whitespace, symmetry, palette entropy. Despite the internal “brain” framing this is <b>not</b> real brain data; it's the swap-in seam for Meta's TRIBE-v2." }),
+  );
+
+  // What it looks at — a fixed legend of the perceptual features.
+  const FEATURES = [
+    ["edge density", "visual clutter"], ["contrast", "figure / ground"],
+    ["colourfulness", "palette intensity"], ["saturation", "colour discipline"],
+    ["whitespace", "breathing room"], ["hue entropy", "palette focus"],
+    ["symmetry", "layout regularity"], ["top contrast", "hero separation"],
+  ];
+  const fg = el("div", { class: "feature-grid" });
+  FEATURES.forEach(([k, v]) => fg.appendChild(el("div", { class: "f" }, el("span", null, k), el("span", { class: "fk" }, v))));
+  wrap.appendChild(fg);
+
+  const list = el("div", { class: "gen-cards", style: "margin-top:18px" });
+  let any = false;
+  for (const g of gens) {
+    const w = winnerOf(g);
+    const det = signalDet(w, "brain_judge");
+    if (!det) continue;
+    any = true;
+    const p = typeof det.p_good === "number" ? det.p_good : null;
+    const card = el("div", { class: "gen-card" },
+      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "brain_judge"))));
+    card.appendChild(el("div", { class: "pgood-bar" },
+      el("div", { class: "fill", style: `width:${p != null ? (p * 100).toFixed(1) : 0}%` }),
+      el("div", { class: "mid" }),
+      el("div", { class: "txt" }, p != null ? `P(good) ${(p * 100).toFixed(0)}%  ·  midline = 50/50` : "—")));
+    const backend = det.encoder_backend || "—";
+    const fallback = backend === "perceptual-fallback";
+    card.appendChild(el("div", { class: `backend-note ${fallback ? "fallback" : ""}` },
+      `backend: ${backend}${fallback ? "  (perceptual stand-in — no real brain model)" : ""}`));
+    list.appendChild(card);
+  }
+  if (!any) list.appendChild(el("div", { class: "empty-inline" },
+    "No generation has been scored by this classifier yet — it runs on the next /autodesign loop."));
   wrap.appendChild(list);
   return wrap;
 }

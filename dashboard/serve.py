@@ -110,11 +110,10 @@ def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
     """Decompose signal outputs into a flat list of individual criteria.
 
     Each entry is `{key, score (0-1), weight, source}`. A signal that exposes
-    `details.subscores` and `details.weights` (e.g. SaliencySignal) becomes
-    multiple flat criteria — one per sub-score. A signal that does not (VLM
-    judge today, when implemented) appears as a single criterion under its own
-    key, with the engine-level weight defaulting to 1.0 until the signal opts
-    in to decomposition.
+    `details.subscores` + `details.weights` (SaliencySignal) or
+    `details.per_principle` (JudgeSignal) becomes multiple flat criteria — one
+    per sub-score / UX principle. A signal that exposes neither appears as a
+    single criterion under its own key, with weight left null.
     """
     out: list[dict] = []
     seen_sources: set[str] = set()
@@ -122,6 +121,10 @@ def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
         details = payload.get("details") or {}
         subs = details.get("subscores") or {}
         weights = details.get("weights") or {}
+        # The VLM judge decomposes into one criterion per UX principle. Its
+        # per_principle scores are 0-10 (rescaled to 0-1 here), each with its own
+        # rubric weight — mirroring how saliency decomposes via `subscores`.
+        per_principle = details.get("per_principle") or {}
         # Decomposed criteria: prefer these and skip the coarse signal score.
         if subs:
             for sub_key, sub_val in subs.items():
@@ -131,6 +134,17 @@ def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
                     "key": sub_key,
                     "score": sub_val,  # already 0-1
                     "weight": weights.get(sub_key),
+                    "source": source,
+                })
+            seen_sources.add(source)
+        elif per_principle:
+            for p_key, p_val in per_principle.items():
+                score = p_val.get("score") if isinstance(p_val, dict) else p_val
+                weight = p_val.get("weight") if isinstance(p_val, dict) else None
+                out.append({
+                    "key": p_key,
+                    "score": (score / 10.0) if isinstance(score, (int, float)) else None,
+                    "weight": weight,
                     "source": source,
                 })
             seen_sources.add(source)

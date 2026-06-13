@@ -51,7 +51,12 @@ criteria:
   # weighted above the narrower saliency (attention-to-focal-region) signal.
   saliency:  0.4
   vlm_judge: 0.6
-  # brain_judge: 0.2   # re-add once the brain-scan classifier is working (WIP)
+  # The two Nemotron signals are deliberately scoped to NOT overlap with vlm_judge/saliency:
+  # prompt_consistency judges content/feature PRESENCE (not looks); stress_test judges
+  # interaction BEHAVIOR (not looks/content). Enable both when NEBIUS_API_KEY is set.
+  prompt_consistency: 0.5   # Nemotron: is every requested element/feature actually in the build? (text, not visual)
+  stress_test:        0.4   # Nemotron + headless browser: do buttons/links work & behave consistently? (behavior only)
+  brain_judge: 0.2   # perceptual-fallback classifier (RBF SVM, CV-AUC 0.85) vs awwwards/Lovable; NOT real brain data yet
 
 saliency:
   # Which region of the page the saliency signal should optimize attention toward.
@@ -94,9 +99,38 @@ originality:
   n_candidates: 10     # URLs the agent returns; we over-fetch then keep what renders
   # search_model: claude-opus-4-8   # pin the research model (defaults to models.judge)
 
+nemotron:
+  # Shared config for the Nemotron-backed signals (stress_test, prompt_consistency).
+  # Nebius Token Factory exposes an OpenAI-compatible API; we call it via the openai SDK.
+  base_url:    https://api.tokenfactory.us-central1.nebius.com/v1/
+  model:       nvidia/Nemotron-3-Ultra-550b-a55b   # verified id on this Token Factory account
+  api_key_env: NEBIUS_API_KEY    # env var holding your Nebius Token Factory key
+  vision:      false             # set true (and use a VL Nemotron) to send a screenshot to prompt_consistency
+
+stress_test:
+  # Agentic stress test: several Nemotron SUBAGENTS (personas below) each autonomously drive
+  # a headless browser via tool calls (list/click/type/read/back) to pursue a goal, then
+  # report findings; their scores are merged. Needs playwright + NEBIUS_API_KEY. Without the
+  # key it falls back to a deterministic probe (clicks every element) for a behavioral score.
+  max_steps:        12     # max tool-call steps per subagent before it must finish
+  max_interactions: 25     # cap elements listed per page (keeps the listing/cost bounded)
+  settle_ms:        600    # wait after each click for navigation/DOM to settle
+  agent_max_tokens: 1024   # output budget per agent step
+  # model: nvidia/Llama-3_1-Nemotron-Ultra-253B-v1   # override the nemotron.model for this signal
+  # personas:              # override the default 3 (first-time visitor / link auditor / form tester)
+  #   - {name: "checkout shopper", goal: "Add an item to the cart and reach checkout. Report anything that blocks the purchase."}
+  #   - {name: "skeptic",          goal: "Click every link and button; report any dead control, JS error, or inconsistent behavior."}
+
+prompt_consistency:
+  # Text-based check of the generated site against the brief (the prompt). Distinct from
+  # vlm_judge's visual `brief_adherence` principle. Needs NEBIUS_API_KEY; skips without it.
+  # vision: true     # attach a rendered frame (requires a vision-capable Nemotron tier)
+  # model: nvidia/Llama-3_3-Nemotron-Super-49B-v1   # override the nemotron.model for this signal
+
 capture:
   viewport:           [1280, 800]
-  animation_seconds:  10.0
-  # 10 frames evenly spaced across the 10s window (fractional timestamps, endpoints included)
-  keyframes:          [0.0, 0.11, 0.22, 0.33, 0.44, 0.56, 0.67, 0.78, 0.89, 1.0]
+  animation_seconds:  5.0
+  # 5 frames evenly spaced across the 5s window: 0s, 1.25s, 2.5s, 3.75s, 5s. Fewer frames
+  # than the old 10 = faster + cheaper VLM judge calls. Endpoints always included by capture.py.
+  keyframes:          [0.0, 0.25, 0.5, 0.75, 1.0]
 ```
