@@ -3,256 +3,540 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AutoDesign — evolution dashboard</title>
+  <title>AutoDesign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0e0f12;
-      --panel: #15171c;
-      --panel-2: #1b1e25;
-      --border: #2a2e38;
-      --text: #e8e8ea;
-      --muted: #8b8e96;
-      --accent: #e8b75e;
-      --good: #4ade80;
-      --warn: #f59e0b;
-      --bad:  #ef4444;
-      --font-ui: ui-sans-serif, system-ui, -apple-system, "Inter", sans-serif;
-      --font-mono: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      color-scheme: light;
+      --paper:   #f7f2ea;
+      --paper-2: #efe7d8;
+      --rule:    #1c1814;
+      --ink:     #1c1814;
+      --ink-2:   #5b554d;
+      --ink-3:   #8c867c;
+      --accent:  #b8480f;   /* terracotta */
+      --accent-soft: #e9c8a8;
+      --good:    #2f7a3a;
+      --bad:     #b53b3b;
+      --serif:   "Fraunces", ui-serif, Georgia, serif;
+      --sans:    "Inter", ui-sans-serif, system-ui, sans-serif;
+      --mono:    "JetBrains Mono", ui-monospace, Menlo, monospace;
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0; padding: 0;
-      background: var(--bg); color: var(--text);
-      font-family: var(--font-ui);
-      font-size: 14px; line-height: 1.5;
+      background: var(--paper); color: var(--ink);
+      font-family: var(--sans); font-size: 15px; line-height: 1.55;
     }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+    a:hover { color: var(--ink); }
+    button { font: inherit; }
 
-    /* layout */
-    .topbar {
-      position: sticky; top: 0; z-index: 10;
-      background: rgba(14,15,18,0.92); backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 24px; display: flex; align-items: center; gap: 24px;
+    /* ---- top bar (editorial masthead) ----------------------------------- */
+    header.masthead {
+      border-bottom: 1px solid var(--rule);
+      padding: 18px 36px 16px;
+      display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 24px;
+      background: var(--paper);
     }
-    .topbar h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.01em; }
-    .topbar h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; }
-    .topbar select {
-      background: var(--panel); color: var(--text);
-      border: 1px solid var(--border); border-radius: 6px;
-      padding: 6px 10px; font-family: var(--font-mono); font-size: 12px;
+    .wordmark {
+      font-family: var(--serif); font-weight: 500;
+      font-size: 32px; letter-spacing: -0.01em; line-height: 1;
     }
-    .topbar .spacer { flex: 1; }
-    .topbar .meta { color: var(--muted); font-size: 12px; }
+    .wordmark em { font-style: italic; color: var(--accent); font-weight: 500; }
+    .nav { display: flex; gap: 0; align-self: end; }
+    .nav button {
+      background: transparent; border: 0; padding: 6px 16px 10px;
+      font-family: var(--serif); font-size: 16px; color: var(--ink-3);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      letter-spacing: 0.01em;
+    }
+    .nav button:hover { color: var(--ink); }
+    .nav button.active {
+      color: var(--ink); border-bottom-color: var(--accent);
+    }
+    .meta { font-family: var(--mono); font-size: 11px; color: var(--ink-3); text-align: right; }
+    .meta select {
+      background: transparent; color: var(--ink); border: 0;
+      font: inherit; padding: 0; cursor: pointer;
+      border-bottom: 1px dashed var(--ink-3);
+    }
+    .meta .stat { display: block; margin-top: 4px; }
 
-    main { padding: 20px 24px 64px; max-width: 1500px; margin-inline: auto; }
+    main { padding: 0; }
 
-    section { margin-top: 22px; }
-    .label {
-      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--muted); font-weight: 600; margin-bottom: 10px;
+    /* ---- generic layout ------------------------------------------------- */
+    .spread { padding: 36px 48px; max-width: 1400px; margin-inline: auto; }
+    .spread.narrow { max-width: 900px; }
+
+    .eyebrow {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 12px;
+    }
+    .display {
+      font-family: var(--serif); font-weight: 500;
+      font-size: clamp(40px, 4.5vw, 64px); line-height: 1.02;
+      letter-spacing: -0.015em; margin: 0;
+    }
+    .body-lead {
+      font-family: var(--serif); font-style: italic; font-weight: 400;
+      font-size: 20px; line-height: 1.4; color: var(--ink-2); margin: 12px 0 0;
+      max-width: 56ch;
+    }
+    .empty {
+      padding: 80px 24px; color: var(--ink-3); text-align: center;
+      font-family: var(--serif); font-size: 18px; font-style: italic;
     }
 
-    /* brief */
-    .brief {
-      padding: 16px 20px; border: 1px solid var(--border);
-      border-radius: 8px; background: var(--panel);
-      font-style: italic; color: var(--text);
+    /* ============================================================ */
+    /* PAGE 1 — EVOLUTION                                            */
+    /* ============================================================ */
+    .evo-hero {
+      display: grid; grid-template-columns: 1fr 1.7fr; gap: 56px;
+      padding: 56px 48px 24px; max-width: 1500px; margin-inline: auto;
     }
-    .brief::before { content: "▍ "; color: var(--accent); font-style: normal; }
-
-    /* lineage chart */
-    .lineage {
-      background: var(--panel); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px 20px;
+    .evo-info { padding-top: 28px; }
+    .evo-info .gen-label {
+      font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3);
     }
-    .lineage svg { width: 100%; height: 180px; display: block; }
-    .lineage-axis { stroke: var(--border); stroke-width: 1; }
-    .lineage-line { stroke: var(--accent); stroke-width: 2.5; fill: none; }
-    .lineage-area { fill: var(--accent); opacity: 0.12; }
-    .lineage-dot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; cursor: pointer; }
-    .lineage-dot.winner { fill: var(--good); }
-    .lineage-label { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
-    .lineage-value { font-family: var(--font-mono); font-size: 11px; fill: var(--text); font-weight: 600; }
-
-    /* sub-score grid */
-    .subscore-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      gap: 12px; margin-top: 12px;
+    .evo-info .gen-score {
+      font-family: var(--serif); font-weight: 500;
+      font-size: 96px; line-height: 0.95; letter-spacing: -0.03em;
+      margin: 8px 0 4px; color: var(--ink);
     }
-    .subscore-card {
-      padding: 12px 14px; background: var(--panel-2);
-      border: 1px solid var(--border); border-radius: 6px;
+    .evo-info .gen-score sup {
+      font-size: 32px; vertical-align: top; color: var(--ink-3);
+      margin-left: 6px; font-weight: 400;
     }
-    .subscore-card .label { margin-bottom: 6px; }
-    .subscore-card .vals {
-      display: flex; align-items: baseline; gap: 8px;
-      font-family: var(--font-mono);
+    .evo-info .delta {
+      font-family: var(--mono); font-size: 14px; color: var(--ink-3);
     }
-    .subscore-card .now { font-size: 18px; font-weight: 700; color: var(--text); }
-    .subscore-card .delta { font-size: 12px; }
     .delta.pos { color: var(--good); }
     .delta.neg { color: var(--bad); }
-    .delta.flat { color: var(--muted); }
-    .subscore-card .spark { margin-top: 8px; height: 28px; }
-
-    /* generation timeline */
-    .gen-tabs {
-      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+    .delta.flat { color: var(--ink-3); }
+    .evo-info .gen-headline {
+      font-family: var(--serif); font-style: italic; font-weight: 400;
+      font-size: 22px; line-height: 1.35; color: var(--ink-2);
+      margin: 28px 0 0; max-width: 36ch;
     }
-    .gen-tab {
-      padding: 6px 14px; background: var(--panel); color: var(--muted);
-      border: 1px solid var(--border); border-radius: 6px;
-      font-family: var(--font-mono); font-size: 12px;
+    .evo-info .gen-changed {
+      font-family: var(--sans); font-size: 13px; color: var(--ink-3);
+      margin-top: 16px; max-width: 42ch; line-height: 1.55;
+    }
+    .evo-info .gen-changed strong { color: var(--ink-2); font-weight: 600; }
+
+    /* stage (image area) */
+    .stage-shell {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .stage {
+      position: relative; aspect-ratio: 1280 / 800;
+      background: #fff; border: 1px solid var(--rule);
+      overflow: hidden;
+      box-shadow: 0 18px 40px -22px rgba(28,24,20,0.35);
+    }
+    .stage .layer {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; object-position: top;
+      opacity: 0; transition: opacity 380ms ease;
+      pointer-events: none;
+    }
+    .stage .layer.active { opacity: 1; }
+    .stage .saliency-layer { mix-blend-mode: normal; }
+    /* Live iframe stage layer — fixed at the page's design viewport (1280x800)
+       and CSS-scaled to fit the stage box. Lets us render the candidate's
+       actual HTML so its entrance animations run on every flip, instead of
+       trying to autoplay a recorded webm (which browsers gate behind user
+       gestures). */
+    .stage .frame-layer {
+      position: absolute; top: 0; left: 0;
+      width: 1280px; height: 800px;
+      border: 0; background: transparent;
+      transform-origin: top left;
+      pointer-events: none;
+    }
+    .stage .empty-layer {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      color: var(--ink-3); font-family: var(--serif); font-style: italic;
+    }
+
+    /* nav arrows on the stage (visible only when there are siblings) */
+    .stage .nav-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.92); color: var(--ink);
+      border: 1px solid var(--rule);
+      font-family: var(--serif); font-size: 24px; line-height: 1;
+      cursor: pointer; display: grid; place-items: center;
+      opacity: 0; transition: opacity 160ms ease;
+    }
+    .stage:hover .nav-arrow { opacity: 1; }
+    .stage .nav-arrow:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .stage .nav-arrow.prev { left: 12px; }
+    .stage .nav-arrow.next { right: 12px; }
+    .stage .nav-arrow[disabled] { opacity: 0 !important; pointer-events: none; }
+
+    /* corner badge showing which candidate is on stage */
+    .stage .stage-badge {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(255,255,255,0.92); border: 1px solid var(--rule);
+      padding: 6px 10px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: 0.06em; color: var(--ink);
+    }
+    .stage .stage-badge .star { color: var(--accent); font-weight: 600; }
+    .stage .open-live {
+      position: absolute; bottom: 12px; right: 12px;
+      background: var(--accent); color: #fff; border: 1px solid var(--accent);
+      padding: 6px 10px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: 0.04em; cursor: pointer;
+    }
+
+    /* below-stage controls bar: dots + saliency toggle + auto-play */
+    .stage-bar {
+      display: flex; align-items: center; gap: 20px;
+      padding: 4px 0 0; flex-wrap: wrap;
+    }
+    .sib-dots { display: flex; align-items: center; gap: 8px; }
+    .sib-dots .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--paper);
+      border: 1.5px solid var(--rule);
+      cursor: pointer; transition: all 140ms ease;
+    }
+    .sib-dots .dot:hover { border-color: var(--accent); }
+    .sib-dots .dot.active { background: var(--accent); border-color: var(--accent); }
+    .sib-dots .dot.winner { box-shadow: 0 0 0 3px var(--accent-soft); }
+    .sib-dots .count {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+      letter-spacing: 0.06em; margin-left: 4px;
+    }
+    .play-btn {
+      background: transparent; border: 1px solid var(--rule);
+      color: var(--ink); padding: 6px 12px; cursor: pointer;
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .play-btn:hover { background: var(--ink); color: var(--paper); }
+    .play-btn.playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .stage-bar .spacer { flex: 1; }
+
+    /* yes/no toggle (saliency overlay) */
+    .toggle {
+      display: inline-flex; align-items: center; gap: 12px;
       cursor: pointer; user-select: none;
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3);
     }
-    .gen-tab:hover { color: var(--text); border-color: var(--muted); }
-    .gen-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
-    .gen-tab .score { color: inherit; opacity: 0.75; margin-left: 8px; }
+    .toggle .label-no, .toggle .label-yes {
+      transition: color 140ms ease;
+    }
+    .toggle .switch {
+      width: 40px; height: 22px; border-radius: 999px;
+      background: var(--rule); position: relative;
+      transition: background 180ms ease;
+    }
+    .toggle .switch::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%; background: var(--paper);
+      transition: transform 180ms cubic-bezier(.4,1.4,.5,1);
+    }
+    .toggle.on .switch { background: var(--accent); }
+    .toggle.on .switch::after { transform: translateX(18px); }
+    .toggle .label-no { color: var(--ink); }
+    .toggle.on .label-no { color: var(--ink-3); }
+    .toggle.on .label-yes { color: var(--ink); }
+    .toggle:hover .switch { box-shadow: 0 0 0 4px var(--accent-soft); }
 
-    /* candidate grid */
-    .cand-grid {
+    /* slider */
+    .scrubber-wrap {
+      max-width: 1500px; margin: 16px auto 0; padding: 0 48px 32px;
+    }
+    .scrubber {
+      position: relative; height: 96px;
+      border-top: 1px solid var(--rule);
+    }
+    .scrubber .track {
+      position: absolute; left: 0; right: 0; top: 28px;
+      height: 1px; background: var(--rule); opacity: 0.18;
+    }
+    .scrubber .progress {
+      position: absolute; left: 0; top: 28px;
+      height: 1px; background: var(--accent); opacity: 0.7;
+      transition: width 250ms ease;
+    }
+    .scrubber .tick {
+      position: absolute; top: 16px; transform: translateX(-50%);
+      cursor: pointer; user-select: none; width: 80px; text-align: center;
+    }
+    .scrubber .tick .dot {
+      width: 12px; height: 12px; margin: 0 auto;
+      border-radius: 50%; background: var(--paper);
+      border: 1.5px solid var(--rule);
+      transition: background 160ms, border-color 160ms, transform 160ms;
+    }
+    .scrubber .tick.active .dot {
+      background: var(--accent); border-color: var(--accent);
+      transform: scale(1.25);
+    }
+    .scrubber .tick.best .dot {
+      border-color: var(--accent);
+    }
+    .scrubber .tick .lbl {
+      margin-top: 8px; font-family: var(--mono); font-size: 11px;
+      color: var(--ink-3); letter-spacing: 0.05em;
+    }
+    .scrubber .tick.active .lbl { color: var(--ink); }
+    .scrubber .tick .val {
+      margin-top: 2px; font-family: var(--serif); font-size: 14px;
+      color: var(--ink-2);
+    }
+    .scrubber .tick.active .val { color: var(--ink); font-weight: 500; }
+    .scrubber .helper {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-3);
+      display: flex; justify-content: space-between;
+    }
+
+    /* criterion strip */
+    .criteria {
+      max-width: 1500px; margin: 0 auto; padding: 8px 48px 24px;
+      display: grid; gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+    .crit {
+      padding: 12px 0; border-top: 1px solid var(--rule);
+    }
+    .crit .k {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink-3);
+    }
+    .crit .v {
+      font-family: var(--serif); font-size: 28px; font-weight: 500;
+      line-height: 1; margin-top: 6px; color: var(--ink);
+    }
+    .crit .src {
+      font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+      margin-top: 4px;
+    }
+    .crit .d {
+      font-family: var(--mono); font-size: 12px; margin-top: 4px;
+    }
+    .crit .why {
+      margin-top: 8px;
+      font-family: var(--serif); font-style: italic; font-size: 12.5px;
+      line-height: 1.4; color: var(--ink-2);
+    }
+
+    /* siblings drawer (gen-0 fan-out) */
+    .siblings {
+      max-width: 1500px; margin: 0 auto; padding: 24px 48px 48px;
+      border-top: 1px solid var(--rule);
+    }
+    .siblings h3 {
+      margin: 0 0 16px; font-family: var(--mono); font-size: 11px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--ink-3); font-weight: 500;
+    }
+    .sib-grid {
       display: grid; gap: 16px;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     }
-    .cand {
-      background: var(--panel); border: 1px solid var(--border);
-      border-radius: 8px; overflow: hidden;
-      transition: border-color 120ms ease, transform 120ms ease;
+    .sib {
+      cursor: pointer; background: var(--paper);
+      transition: transform 160ms ease;
     }
-    .cand:hover { border-color: var(--muted); }
-    .cand.winner { border-color: var(--good); box-shadow: 0 0 0 1px rgba(74,222,128,0.25); }
-    .cand .preview {
-      position: relative; background: #000;
-      aspect-ratio: 1280 / 800; overflow: hidden; cursor: pointer;
+    .sib:hover { transform: translateY(-2px); }
+    .sib .shot {
+      aspect-ratio: 1280 / 800; background: #fff;
+      border: 1px solid var(--rule); overflow: hidden;
     }
-    .cand .preview img {
+    .sib .shot img {
       width: 100%; height: 100%; object-fit: cover; object-position: top;
-      transition: opacity 200ms ease;
+      filter: saturate(0.95);
     }
-    .cand .preview img.overlay {
-      position: absolute; inset: 0; opacity: 0;
+    .sib.winner .shot {
+      border: 1.5px solid var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
-    .cand.show-saliency .preview img.base { opacity: 0.25; }
-    .cand.show-saliency .preview img.overlay { opacity: 1; }
-    .cand .meta { padding: 12px 14px; }
-    .cand .row {
-      display: flex; justify-content: space-between; align-items: baseline;
-      gap: 12px; margin-bottom: 8px;
+    .sib .info {
+      margin-top: 8px; display: flex; justify-content: space-between;
+      align-items: baseline; font-family: var(--mono); font-size: 11px;
     }
-    .cand .name {
-      font-family: var(--font-mono); font-size: 12px; color: var(--muted);
-    }
-    .cand .score-pill {
-      font-family: var(--font-mono); font-weight: 700; font-size: 16px;
-      padding: 2px 8px; border-radius: 4px; background: var(--panel-2);
-    }
-    .cand.winner .name::after { content: " · winner"; color: var(--good); }
-    .cand .hypothesis {
-      font-size: 12px; color: var(--muted); margin-bottom: 10px;
-      line-height: 1.45; min-height: 2.7em;
-    }
-    .cand .bars { display: flex; flex-direction: column; gap: 4px; }
-    .bar-row {
-      display: grid; grid-template-columns: 96px 1fr 36px;
-      align-items: center; gap: 8px;
-      font-family: var(--font-mono); font-size: 11px; color: var(--muted);
-    }
-    .bar {
-      height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden;
-    }
-    .bar > div { height: 100%; background: var(--accent); border-radius: 2px; }
-    .bar-val { text-align: right; color: var(--text); }
+    .sib .info .name { color: var(--ink-2); }
+    .sib .info .score { color: var(--ink); font-weight: 600; }
+    .sib.winner .info .name { color: var(--accent); }
+    .sib.winner .info .name::after { content: " · winner"; font-style: italic; }
 
-    .cand .controls {
-      display: flex; gap: 6px; padding: 0 14px 12px;
-      font-family: var(--font-mono); font-size: 11px;
+    /* ============================================================ */
+    /* PAGE 2 — METRICS                                              */
+    /* ============================================================ */
+    .metrics-head { padding: 56px 48px 24px; max-width: 1500px; margin-inline: auto; }
+    .metrics-grid {
+      max-width: 1500px; margin-inline: auto; padding: 0 48px 48px;
+      display: grid; gap: 48px; grid-template-columns: 1fr;
     }
-    .cand .controls button {
-      flex: 1; padding: 6px 8px; background: var(--panel-2); color: var(--muted);
-      border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
-      font-family: inherit; font-size: inherit;
+    .chart-card {
+      border-top: 1px solid var(--rule); padding-top: 20px;
     }
-    .cand .controls button:hover { color: var(--text); }
-    .cand .controls button.active { color: var(--accent); border-color: var(--accent); }
+    .chart-card .head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 14px;
+    }
+    .chart-card h3 {
+      margin: 0; font-family: var(--serif); font-weight: 500; font-size: 22px;
+      letter-spacing: -0.005em;
+    }
+    .chart-card .head .now {
+      font-family: var(--mono); font-size: 13px; color: var(--ink-3);
+    }
+    .chart-card .head .now strong { color: var(--ink); font-weight: 600; }
+    .chart-card .head .now .d { margin-left: 8px; }
+    .chart-card svg { width: 100%; display: block; }
+    .chart-headline svg { height: 260px; }
+    .chart-small  svg { height: 130px; }
+
+    .small-multiples {
+      display: grid; gap: 36px 48px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    /* VLM judge feedback */
+    .vlm-section {
+      max-width: 1500px; margin: 0 auto; padding: 32px 48px 80px;
+      border-top: 1px solid var(--rule);
+    }
+    .vlm-section .head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 18px;
+    }
+    .vlm-section h3 {
+      margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 500;
+    }
+    .vlm-section .badge {
+      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+      border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 99px;
+    }
+    .vlm-list {
+      display: grid; gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .vlm-card {
+      padding: 18px; border: 1px solid var(--rule); background: var(--paper-2);
+    }
+    .vlm-card .gen {
+      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .vlm-card .feedback {
+      font-family: var(--serif); font-size: 17px; font-style: italic;
+      color: var(--ink-2); margin-top: 8px; line-height: 1.45;
+    }
+
+    /* svg chart helpers */
+    .axis-line { stroke: var(--rule); stroke-width: 1; opacity: 0.45; }
+    .axis-line.faint { stroke-dasharray: 2 4; opacity: 0.18; }
+    .axis-tick { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); }
+    .series-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+    .series-area { fill: var(--accent); opacity: 0.10; }
+    .series-dot { fill: var(--accent); stroke: var(--paper); stroke-width: 1.5; }
+    .series-dot.best { stroke: var(--accent); fill: var(--paper); stroke-width: 2.5; }
+    .series-value { font-family: var(--mono); font-size: 11px; fill: var(--ink); font-weight: 500; }
 
     /* lightbox */
     .lightbox {
-      position: fixed; inset: 0; z-index: 50;
-      background: rgba(0,0,0,0.85); display: none; padding: 24px;
+      position: fixed; inset: 0; z-index: 50; background: rgba(28,24,20,0.78);
+      display: none; padding: 32px;
     }
-    .lightbox.open { display: grid; grid-template-rows: auto 1fr; gap: 12px; }
-    .lightbox header {
+    .lightbox.open { display: grid; grid-template-rows: auto 1fr; gap: 14px; }
+    .lightbox .top {
       display: flex; justify-content: space-between; align-items: center;
-      color: var(--text);
+      color: var(--paper); font-family: var(--serif); font-size: 18px; font-style: italic;
     }
-    .lightbox header button {
-      background: var(--panel); color: var(--text); border: 1px solid var(--border);
-      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    .lightbox .top button {
+      background: var(--paper); color: var(--ink); border: 0; padding: 6px 14px;
+      cursor: pointer; font-family: var(--mono); font-size: 12px;
     }
-    .lightbox .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
-    .lightbox iframe, .lightbox img {
-      width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 6px;
-      background: white;
+    .lightbox .body { display: grid; grid-template-columns: 1fr; gap: 14px; min-height: 0; }
+    .lightbox iframe {
+      width: 100%; height: 100%; background: white;
+      border: 1px solid var(--rule);
     }
-    .lightbox iframe { background: white; }
-
-    /* critique panel */
-    .critique {
-      padding: 14px 18px; background: var(--panel); border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .critique p { margin: 0 0 8px; color: var(--text); }
-    .critique ul { margin: 6px 0 0 16px; padding: 0; color: var(--muted); }
-
-    .empty { color: var(--muted); padding: 24px; text-align: center; }
   </style>
 </head>
 <body>
 
-<div class="topbar">
-  <h1>AutoDesign <small>evolution dashboard</small></h1>
-  <select id="run-picker" title="run id"></select>
-  <div class="spacer"></div>
-  <div class="meta" id="meta"></div>
-</div>
+<header class="masthead">
+  <div class="wordmark">autodesign<em>.</em></div>
+  <nav class="nav">
+    <button data-view="evolution" class="active">Evolution</button>
+    <button data-view="metrics">Metrics</button>
+  </nav>
+  <div class="meta">
+    <select id="run-picker"></select>
+    <span class="stat" id="meta-stat"></span>
+  </div>
+</header>
 
 <main id="main">
   <p class="empty">Loading…</p>
 </main>
 
 <div class="lightbox" id="lightbox">
-  <header>
-    <strong id="lightbox-title"></strong>
+  <div class="top">
+    <span id="lightbox-title"></span>
     <button id="lightbox-close">close (esc)</button>
-  </header>
-  <div class="stage">
-    <iframe id="lightbox-iframe" sandbox="allow-same-origin"></iframe>
-    <img id="lightbox-overlay" alt="saliency overlay" />
+  </div>
+  <div class="body">
+    <iframe id="lightbox-iframe" sandbox="allow-same-origin allow-scripts"></iframe>
   </div>
 </div>
 
 <script>
-const SUB_KEYS = ["hero_pull", "focal_dominance", "composition_spread", "scan_rhythm"];
-const SUB_LABEL = {
-  hero_pull: "hero pull",
-  focal_dominance: "focal dom.",
-  composition_spread: "spread",
-  scan_rhythm: "scan rhythm",
+// ============================================================
+// state
+// ============================================================
+const STATE = {
+  runs: [],
+  runId: null,
+  manifest: null,
+  view: "evolution",        // "evolution" | "metrics"
+  scrubIndex: 0,            // index into generations
+  candIndex: 0,             // which sibling within current gen is on stage
+  showSaliency: false,      // overlay on the stage
+  playTimer: null,          // interval id for auto-cycle through siblings
+  stageA: null,             // ping-pong base image layers (stable across flips)
+  stageB: null,
+  stageSal: null,           // saliency layer
+  stageFrame: null,         // live iframe layer showing the candidate's actual HTML
+  stageRO: null,            // ResizeObserver to keep the iframe scale matched to the stage box
+  stageActive: "a",         // which base layer is currently visible
 };
 
-let CURRENT_RUN = null;
-let CURRENT_MANIFEST = null;
-let ACTIVE_GEN = 0;
+const SUB_LABELS = {
+  intent_alignment:   "intent alignment",
+  focus_clarity:      "focus clarity",
+  reading_order:      "reading order",
+  animation_focus:    "animation focus",
+  // legacy keys (left in so historical runs still pretty-print)
+  hero_pull:          "hero pull",
+  focal_dominance:    "focal dominance",
+  composition_spread: "spread",
+  scan_rhythm:        "scan rhythm",
+};
 
+// ============================================================
+// utils
+// ============================================================
 async function jget(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${url} ${r.status}`);
   return r.json();
 }
-
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
   if (attrs) {
@@ -260,338 +544,605 @@ function el(tag, attrs, ...kids) {
       if (k === "class") e.className = v;
       else if (k === "on") for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn);
       else if (k === "html") e.innerHTML = v;
-      else if (v !== null && v !== undefined) e.setAttribute(k, v);
+      else if (v != null) e.setAttribute(k, v);
     }
   }
   for (const k of kids) {
-    if (k == null) continue;
-    e.append(typeof k === "string" ? document.createTextNode(k) : k);
+    if (k == null || k === false) continue;
+    e.append(typeof k === "string" || typeof k === "number" ? String(k) : k);
   }
   return e;
 }
-
+function svgNode(tag, attrs) {
+  const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v != null) e.setAttribute(k, v);
+  }
+  return e;
+}
 function fmt(x, d = 2) {
   if (x == null) return "—";
   if (typeof x !== "number") return String(x);
   return x.toFixed(d);
 }
+function prettyKey(k) { return SUB_LABELS[k] || k.replace(/_/g, " "); }
 
-function winnerOfGen(gen) {
+function bestIndex(gens) {
+  let bi = 0, bv = -Infinity;
+  gens.forEach((g, i) => {
+    const c = winnerOf(g);
+    const v = c?.combined ?? -Infinity;
+    if (v > bv) { bv = v; bi = i; }
+  });
+  return bi;
+}
+function winnerOf(gen) {
   return gen.candidates.find(c => c.id === gen.winner) || gen.candidates[0];
 }
 
-function lineageSeries(manifest) {
-  // Per-generation winner subscores (for the headline chart and sparklines).
-  const rows = manifest.generations.map(g => {
-    const w = winnerOfGen(g);
-    const sub = (w && w.subscores && w.subscores.saliency) || {};
-    return {
-      gen: g.id,
-      combined: w ? w.combined : null,
-      hero_pull: sub.hero_pull ?? null,
-      focal_dominance: sub.focal_dominance ?? null,
-      composition_spread: sub.composition_spread ?? null,
-      scan_rhythm: sub.scan_rhythm ?? null,
-    };
+/** Per-generation series for a given criterion key (winner only). */
+function seriesFor(gens, key) {
+  return gens.map(g => {
+    const w = winnerOf(g);
+    const c = (w?.criteria || []).find(x => x.key === key);
+    return c?.score ?? null;
   });
-  return rows;
+}
+/** Per-generation series for the combined (engine-level) score. */
+function combinedSeries(gens) {
+  return gens.map(g => winnerOf(g)?.combined ?? null);
 }
 
-function renderLineageChart(rows) {
-  // Combined-score chart across generations. SVG, no deps.
-  const w = 1000, h = 180, pad = { l: 40, r: 20, t: 16, b: 28 };
-  const xs = rows.map((_, i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(rows.length - 1, 1));
-  const maxY = 10;
-  const ys = rows.map(r => pad.t + (h - pad.t - pad.b) * (1 - (r.combined ?? 0) / maxY));
-  const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
-  const area = `${pad.l},${h - pad.b} ${pts} ${xs[xs.length - 1]},${h - pad.b}`;
-
-  const svgNS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-
-  // y grid
-  for (let v = 0; v <= 10; v += 2) {
-    const y = pad.t + (h - pad.t - pad.b) * (1 - v / maxY);
-    const line = document.createElementNS(svgNS, "line");
-    line.setAttribute("x1", pad.l); line.setAttribute("x2", w - pad.r);
-    line.setAttribute("y1", y); line.setAttribute("y2", y);
-    line.setAttribute("class", "lineage-axis");
-    line.setAttribute("stroke-dasharray", v === 0 ? "" : "2 4");
-    svg.appendChild(line);
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", pad.l - 6); t.setAttribute("y", y + 4);
-    t.setAttribute("text-anchor", "end"); t.setAttribute("class", "lineage-label");
-    t.textContent = String(v);
-    svg.appendChild(t);
+/** Union of criterion keys present across all winners. Ordered by first appearance. */
+function criterionKeys(gens) {
+  const seen = new Set();
+  const order = [];
+  for (const g of gens) {
+    for (const c of (winnerOf(g)?.criteria || [])) {
+      if (!seen.has(c.key)) { seen.add(c.key); order.push(c.key); }
+    }
   }
-
-  // area + line
-  const ar = document.createElementNS(svgNS, "polygon");
-  ar.setAttribute("points", area); ar.setAttribute("class", "lineage-area");
-  svg.appendChild(ar);
-  const ln = document.createElementNS(svgNS, "polyline");
-  ln.setAttribute("points", pts); ln.setAttribute("class", "lineage-line");
-  svg.appendChild(ln);
-
-  // dots + labels
-  rows.forEach((r, i) => {
-    const dot = document.createElementNS(svgNS, "circle");
-    dot.setAttribute("cx", xs[i]); dot.setAttribute("cy", ys[i]);
-    dot.setAttribute("r", 6);
-    dot.setAttribute("class", `lineage-dot ${i === bestGenIdx(rows) ? "winner" : ""}`);
-    dot.addEventListener("click", () => activateGen(i));
-    svg.appendChild(dot);
-
-    const t = document.createElementNS(svgNS, "text");
-    t.setAttribute("x", xs[i]); t.setAttribute("y", h - 10);
-    t.setAttribute("text-anchor", "middle"); t.setAttribute("class", "lineage-label");
-    t.textContent = r.gen;
-    svg.appendChild(t);
-
-    const v = document.createElementNS(svgNS, "text");
-    v.setAttribute("x", xs[i]); v.setAttribute("y", ys[i] - 12);
-    v.setAttribute("text-anchor", "middle"); v.setAttribute("class", "lineage-value");
-    v.textContent = r.combined != null ? r.combined.toFixed(2) : "—";
-    svg.appendChild(v);
-  });
-  return svg;
+  return order;
 }
 
-function bestGenIdx(rows) {
-  let bi = 0, bv = -Infinity;
-  rows.forEach((r, i) => { if ((r.combined ?? -Infinity) > bv) { bv = r.combined ?? -Infinity; bi = i; } });
-  return bi;
-}
-
-function spark(values, w = 100, h = 28) {
-  const svgNS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.style.width = "100%"; svg.style.height = `${h}px`;
-  const clean = values.map(v => (v == null ? null : Math.max(0, Math.min(1, v))));
-  const xs = clean.map((_, i) => (i * w) / Math.max(clean.length - 1, 1));
-  const ys = clean.map(v => h - 4 - (v == null ? 0 : v * (h - 8)));
-  const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
-  const ar = document.createElementNS(svgNS, "polygon");
-  ar.setAttribute("points", `0,${h} ${pts} ${w},${h}`);
-  ar.setAttribute("fill", "var(--accent)"); ar.setAttribute("opacity", "0.18");
-  svg.appendChild(ar);
-  const ln = document.createElementNS(svgNS, "polyline");
-  ln.setAttribute("points", pts); ln.setAttribute("fill", "none");
-  ln.setAttribute("stroke", "var(--accent)"); ln.setAttribute("stroke-width", "1.5");
-  svg.appendChild(ln);
-  clean.forEach((v, i) => {
-    const c = document.createElementNS(svgNS, "circle");
-    c.setAttribute("cx", xs[i]); c.setAttribute("cy", ys[i]);
-    c.setAttribute("r", 2); c.setAttribute("fill", "var(--accent)");
-    svg.appendChild(c);
-  });
-  return svg;
-}
-
-function renderSubscoreGrid(rows) {
-  const grid = el("div", { class: "subscore-grid" });
-  for (const key of SUB_KEYS) {
-    const series = rows.map(r => r[key]);
-    const cur = series[series.length - 1];
-    const prev = series.length > 1 ? series[series.length - 2] : null;
-    const delta = (cur != null && prev != null) ? (cur - prev) : null;
-    const dcls = delta == null ? "flat" : (Math.abs(delta) < 0.005 ? "flat" : (delta > 0 ? "pos" : "neg"));
-    const dtext = delta == null ? "" :
-      (Math.abs(delta) < 0.005 ? "±0.00" :
-        (delta > 0 ? `+${delta.toFixed(3)}` : delta.toFixed(3)));
-    const card = el("div", { class: "subscore-card" },
-      el("div", { class: "label" }, SUB_LABEL[key]),
-      el("div", { class: "vals" },
-        el("span", { class: "now" }, cur != null ? cur.toFixed(2) : "—"),
-        el("span", { class: `delta ${dcls}` }, dtext),
-      ),
-    );
-    const sparkBox = el("div", { class: "spark" });
-    sparkBox.appendChild(spark(series));
-    card.appendChild(sparkBox);
-    grid.appendChild(card);
+// ============================================================
+// rendering — evolution page
+// ============================================================
+function renderEvolution() {
+  stopPlay();
+  const m = STATE.manifest;
+  const gens = m.generations;
+  if (!gens.length) {
+    document.getElementById("main").innerHTML = `<p class="empty">No generations yet.</p>`;
+    return;
   }
-  return grid;
-}
-
-function renderGenTabs(manifest) {
-  const tabs = el("div", { class: "gen-tabs" });
-  manifest.generations.forEach((g, i) => {
-    const w = winnerOfGen(g);
-    const score = w && w.combined != null ? w.combined.toFixed(2) : "—";
-    const tab = el("div",
-      {
-        class: `gen-tab ${i === ACTIVE_GEN ? "active" : ""}`,
-        on: { click: () => activateGen(i) },
-      },
-      g.id, el("span", { class: "score" }, score),
-    );
-    tabs.appendChild(tab);
-  });
-  return tabs;
-}
-
-function renderCandidate(cand, winnerName) {
-  const isWinner = cand.id === winnerName;
-  const sub = (cand.subscores && cand.subscores.saliency) || {};
-
-  // bars (per-criterion, 0-10)
-  const bars = el("div", { class: "bars" });
-  for (const [k, v] of Object.entries(cand.per_criterion || {})) {
-    const pct = v == null ? 0 : Math.max(0, Math.min(1, v / 10)) * 100;
-    bars.appendChild(el("div", { class: "bar-row" },
-      el("span", null, k),
-      el("div", { class: "bar" }, el("div", { style: `width:${pct.toFixed(1)}%` })),
-      el("span", { class: "bar-val" }, v == null ? "—" : v.toFixed(2)),
-    ));
-  }
-  // subscores too (0-1)
-  for (const k of SUB_KEYS) {
-    const v = sub[k];
-    if (v == null) continue;
-    const pct = Math.max(0, Math.min(1, v)) * 100;
-    bars.appendChild(el("div", { class: "bar-row" },
-      el("span", null, SUB_LABEL[k]),
-      el("div", { class: "bar" }, el("div", { style: `width:${pct.toFixed(1)}%` })),
-      el("span", { class: "bar-val" }, v.toFixed(2)),
-    ));
-  }
-
-  const card = el("div", { class: `cand ${isWinner ? "winner" : ""}` });
-
-  // preview with both images stacked
-  const preview = el("div", { class: "preview", on: { click: () => openLightbox(cand) } });
-  if (cand.frames && cand.frames.length) {
-    preview.appendChild(el("img", { class: "base", src: cand.frames[0], alt: cand.id }));
-  } else {
-    preview.appendChild(el("div", { class: "empty", style: "padding:60px 0;color:var(--muted)" }, "no frame"));
-  }
-  if (cand.saliency) {
-    preview.appendChild(el("img", { class: "overlay", src: cand.saliency, alt: "saliency" }));
-  }
-  card.appendChild(preview);
-
-  // meta block
-  const combined = cand.combined != null ? cand.combined.toFixed(2) : "—";
-  const meta = el("div", { class: "meta" },
-    el("div", { class: "row" },
-      el("span", { class: "name" }, cand.id),
-      el("span", { class: "score-pill" }, combined),
-    ),
-    el("div", { class: "hypothesis" }, cand.hypothesis ? "hypothesis: " + cand.hypothesis : ""),
-    bars,
-  );
-  card.appendChild(meta);
-
-  // controls: toggle saliency, open in lightbox
-  const toggleSaliency = el("button", { type: "button" }, "saliency overlay");
-  if (!cand.saliency) toggleSaliency.disabled = true;
-  toggleSaliency.addEventListener("click", e => {
-    e.stopPropagation();
-    card.classList.toggle("show-saliency");
-    toggleSaliency.classList.toggle("active");
-  });
-  const openBtn = el("button", { type: "button", on: { click: e => { e.stopPropagation(); openLightbox(cand); } } }, "open ↗");
-  card.appendChild(el("div", { class: "controls" }, toggleSaliency, openBtn));
-
-  return card;
-}
-
-function activateGen(i) {
-  ACTIVE_GEN = i;
-  renderActiveGen();
-}
-
-function renderCritiqueFor(gen) {
-  // We surface the lineage's `answered_critique` and `changed` field for this gen.
-  const lin = (CURRENT_MANIFEST.lineage || []).find(r => `gen-${String(r.generation).padStart(3, "0")}` === gen.id);
-  if (!lin) return null;
-  const parts = [];
-  if (lin.answered_critique) parts.push(el("p", null, "critique: " + lin.answered_critique));
-  if (lin.changed) parts.push(el("p", null, "changed: " + lin.changed));
-  if (parts.length === 0) return null;
-  return el("section", null,
-    el("div", { class: "label" }, "what this generation answered"),
-    el("div", { class: "critique" }, ...parts),
-  );
-}
-
-function renderActiveGen() {
-  const gen = CURRENT_MANIFEST.generations[ACTIVE_GEN];
-  const wrap = document.getElementById("active-gen");
-  wrap.innerHTML = "";
-  wrap.appendChild(el("div", { class: "label" }, `${gen.id} · ${gen.candidates.length} candidate${gen.candidates.length === 1 ? "" : "s"}${gen.winner ? " · winner " + gen.winner : ""}`));
-  const grid = el("div", { class: "cand-grid" });
-  for (const c of gen.candidates) grid.appendChild(renderCandidate(c, gen.winner));
-  wrap.appendChild(grid);
-  const critique = renderCritiqueFor(gen);
-  if (critique) wrap.appendChild(critique);
-
-  // re-render tabs to update active state
-  const tabHost = document.getElementById("gen-tabs-host");
-  tabHost.innerHTML = "";
-  tabHost.appendChild(renderGenTabs(CURRENT_MANIFEST));
-}
-
-function renderRun(manifest) {
-  CURRENT_MANIFEST = manifest;
-  ACTIVE_GEN = bestGenIdx(lineageSeries(manifest));
-
   const main = document.getElementById("main");
   main.innerHTML = "";
 
-  if (manifest.brief) {
-    main.appendChild(el("section", null,
-      el("div", { class: "label" }, "brief"),
-      el("div", { class: "brief" }, manifest.brief),
-    ));
-  }
+  const gen = gens[STATE.scrubIndex];
+  // Clamp candIndex into this gen's candidate list.
+  if (STATE.candIndex >= gen.candidates.length) STATE.candIndex = 0;
 
-  const rows = lineageSeries(manifest);
-  const lineageSec = el("section", null,
-    el("div", { class: "label" }, "evolution · combined saliency score (0-10)"),
-    el("div", { class: "lineage" }),
-  );
-  lineageSec.querySelector(".lineage").appendChild(renderLineageChart(rows));
-  main.appendChild(lineageSec);
+  // hero: info column + stage shell column
+  const info = el("div", { class: "evo-info", id: "evo-info" });
+  const stageShell = el("div", { class: "stage-shell" }, buildStageShell(gen));
+  main.appendChild(el("section", { class: "evo-hero" }, info, stageShell));
+  paintInfo(gen);
 
-  main.appendChild(el("section", null,
-    el("div", { class: "label" }, "sub-score evolution"),
-    renderSubscoreGrid(rows),
-  ));
+  // scrubber
+  main.appendChild(renderScrubber(gens));
 
-  main.appendChild(el("section", { id: "gen-tabs-host" }));
-  main.appendChild(el("section", { id: "active-gen" }));
-
-  if (manifest.final) {
-    main.appendChild(el("section", null,
-      el("div", { class: "label" }, "final"),
-      el("div", { class: "brief" },
-        el("a", { href: manifest.final, target: "_blank" }, "open final.html ↗"),
-      ),
-    ));
-  }
-
-  // meta
-  const best = rows[bestGenIdx(rows)];
-  document.getElementById("meta").textContent =
-    `${manifest.generations.length} gens · best ${best.gen} ${(best.combined ?? 0).toFixed(2)}`;
-
-  renderActiveGen();
+  // criterion strip — reflects the candidate currently on stage
+  main.appendChild(el("div", { class: "criteria", id: "criteria-strip" }));
+  paintCriteria(gen);
 }
 
+/* Build the stage shell ONCE per generation: two stable base img layers,
+   one saliency layer, prev/next arrows, badge, open-live button, and a
+   bar with sibling dots + saliency toggle + auto-play. After this, all
+   updates (flip, toggle, play) mutate the existing DOM so transitions animate. */
+function buildStageShell(gen) {
+  const stage = el("div", { class: "stage" });
+  // Live iframe layer — the candidate's actual HTML, so its entrance
+  // animation runs on every flip. The page is authored for 1280x800; we
+  // CSS-scale the iframe down so it fits whatever size the stage box ends up.
+  STATE.stageFrame = el("iframe", {
+    class: "layer frame-layer",
+    sandbox: "allow-same-origin allow-scripts",
+    loading: "eager",
+    title: "candidate preview",
+  });
+  STATE.stageSal = el("img", { class: "layer saliency-layer", alt: "saliency overlay" });
+  STATE.stageActive = "a";
+  stage.appendChild(STATE.stageFrame);
+  stage.appendChild(STATE.stageSal);
+
+  // Keep the iframe scaled so 1280px-wide pages fill the stage box exactly.
+  // ResizeObserver fires whenever the stage box is resized (layout / window).
+  if (STATE.stageRO) { STATE.stageRO.disconnect(); }
+  STATE.stageRO = new ResizeObserver(entries => {
+    for (const e of entries) {
+      const w = e.contentRect.width;
+      if (w > 0) STATE.stageFrame.style.transform = `scale(${w / 1280})`;
+    }
+  });
+  STATE.stageRO.observe(stage);
+
+  const badge = el("div", { class: "stage-badge", id: "stage-badge" });
+  stage.appendChild(badge);
+
+  const prev = el("button", { class: "nav-arrow prev", title: "previous sibling" }, "‹");
+  prev.addEventListener("click", e => { e.stopPropagation(); stepCand(-1); });
+  const next = el("button", { class: "nav-arrow next", title: "next sibling" }, "›");
+  next.addEventListener("click", e => { e.stopPropagation(); stepCand(1); });
+  if (gen.candidates.length <= 1) {
+    prev.setAttribute("disabled", "");
+    next.setAttribute("disabled", "");
+  }
+  stage.appendChild(prev);
+  stage.appendChild(next);
+
+  const openLive = el("button", { class: "open-live", title: "open live page + saliency" }, "open ↗");
+  openLive.addEventListener("click", e => { e.stopPropagation(); openLightbox(currentCand()); });
+  stage.appendChild(openLive);
+
+  const empty = el("div", { class: "empty-layer", id: "stage-empty", style: "display:none" }, "no frame captured");
+  stage.appendChild(empty);
+
+  // bar under the stage
+  const bar = el("div", { class: "stage-bar" });
+
+  // sibling dots
+  const dots = el("div", { class: "sib-dots", id: "sib-dots" });
+  gen.candidates.forEach((c, i) => {
+    const d = el("div", {
+      class: `dot ${i === STATE.candIndex ? "active" : ""} ${c.id === gen.winner ? "winner" : ""}`,
+      title: c.id + (c.id === gen.winner ? " · winner" : "")
+    });
+    d.addEventListener("click", () => setCand(i));
+    dots.appendChild(d);
+  });
+  dots.appendChild(el("span", { class: "count", id: "sib-count" }));
+  bar.appendChild(dots);
+
+  // auto-play (only meaningful with siblings)
+  if (gen.candidates.length > 1) {
+    const play = el("button", { class: "play-btn", id: "play-btn" }, "▶ play");
+    play.addEventListener("click", togglePlay);
+    bar.appendChild(play);
+  }
+
+  bar.appendChild(el("div", { class: "spacer" }));
+
+  // saliency yes/no toggle
+  if (gen.candidates.some(c => c.saliency)) {
+    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze saliency heatmap" },
+      el("span", null, "saliency"),
+      el("span", { class: "label-no" }, "no"),
+      el("div", { class: "switch" }),
+      el("span", { class: "label-yes" }, "yes"),
+    );
+    toggle.addEventListener("click", () => setShowSaliency(!STATE.showSaliency));
+    bar.appendChild(toggle);
+  }
+
+  // initial paint
+  setTimeout(() => paintStage(gen, /*animate=*/false), 0);
+
+  return el("div", null, stage, bar);
+}
+
+/* Mutate the existing stage to show candidate at STATE.candIndex. */
+function paintStage(gen, animate = true) {
+  const cand = gen.candidates[STATE.candIndex];
+  if (!cand) return;
+  const emptyEl = document.getElementById("stage-empty");
+  const haveHtml = !!cand.html;
+  emptyEl.style.display = haveHtml ? "none" : "grid";
+
+  // Live iframe layer. Setting src on every flip restarts the page's
+  // entrance animation — exactly what we want users to see. When the
+  // saliency overlay is on we keep the iframe in place (animations still
+  // running underneath) but the heatmap covers it.
+  const frame = STATE.stageFrame;
+  if (haveHtml) {
+    // Force a reload even when flipping to the same src (e.g. user nudges
+    // to the same candidate) so the animation always restarts cleanly.
+    frame.src = "about:blank";
+    requestAnimationFrame(() => { frame.src = cand.html; });
+    frame.classList.add("active");
+  } else {
+    frame.classList.remove("active");
+    frame.src = "about:blank";
+  }
+  if (!animate) {
+    frame.style.transition = "none";
+    requestAnimationFrame(() => { frame.style.transition = ""; });
+  }
+
+  // Saliency overlay layer — toggled by the YES/NO control under the stage.
+  if (cand.saliency) {
+    STATE.stageSal.src = cand.saliency;
+    STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
+  } else {
+    STATE.stageSal.classList.remove("active");
+    STATE.stageSal.removeAttribute("src");
+  }
+
+  // badge: "cand-XX · winner" / "cand-XX"
+  const badge = document.getElementById("stage-badge");
+  if (badge) {
+    badge.innerHTML = "";
+    badge.append(cand.id);
+    if (cand.id === gen.winner) {
+      badge.appendChild(el("span", { class: "star" }, "  ★ winner"));
+    }
+  }
+
+  // sibling indicator dots + count
+  const dotsRoot = document.getElementById("sib-dots");
+  if (dotsRoot) {
+    const dots = dotsRoot.querySelectorAll(".dot");
+    dots.forEach((d, i) => d.classList.toggle("active", i === STATE.candIndex));
+    const count = document.getElementById("sib-count");
+    if (count) count.textContent = `${STATE.candIndex + 1} of ${gen.candidates.length}`;
+  }
+}
+
+/* Repaint the info column (gen score, hypothesis, what-changed). Cheap full redraw. */
+function paintInfo(gen) {
+  const m = STATE.manifest;
+  const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
+  const cand = currentCand();
+  const winner = winnerOf(gen);
+  const prevWinner = prevGen ? winnerOf(prevGen) : null;
+  const isMulti = gen.candidates.length > 1;
+
+  // For fan-out gens we show TWO numbers: the candidate on stage, and (smaller) the gen winner.
+  const showScore = cand?.combined;
+  const winnerScore = winner?.combined;
+  const delta = (showScore != null && prevWinner?.combined != null) ? showScore - prevWinner.combined : null;
+
+  const info = document.getElementById("evo-info");
+  info.innerHTML = "";
+  info.appendChild(el("h1", { class: "display" }, "AutoDesign."));
+  info.appendChild(el("p", { class: "body-lead" }, "relentlessly refined."));
+  info.appendChild(el("div", { class: "gen-label", style: "margin-top:40px" }, gen.id.toUpperCase() + (isMulti ? ` · ${cand?.id ?? ""}` : "")));
+  info.appendChild(el("div", { class: "gen-score" },
+    showScore != null ? showScore.toFixed(2) : "—",
+    el("sup", null, "/ 10"),
+  ));
+  if (isMulti && cand?.id !== gen.winner && winnerScore != null) {
+    info.appendChild(el("div", { class: "delta flat" }, `winner of this gen: ${winnerScore.toFixed(2)} (${gen.winner})`));
+  } else {
+    info.appendChild(el("div", { class: `delta ${deltaClass(delta)}` },
+      isMulti ? "click dots to flip · play to auto-cycle" : deltaText(delta)));
+  }
+  if (cand?.hypothesis) {
+    info.appendChild(el("p", { class: "gen-headline" }, "“" + cand.hypothesis.replace(/^hypothesis:\s*/i, "") + "”"));
+  }
+}
+
+/* Repaint the criterion strip for the candidate currently on stage. */
+function paintCriteria(gen) {
+  const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
+  const prevCand = prevGen ? winnerOf(prevGen) : null;
+  const cand = currentCand();
+  const host = document.getElementById("criteria-strip");
+  if (!host) return;
+  host.innerHTML = "";
+  if (!cand || !cand.criteria || cand.criteria.length === 0) return;
+  const prevByKey = Object.fromEntries((prevCand?.criteria || []).map(c => [c.key, c.score]));
+  for (const c of cand.criteria) {
+    const prev = prevByKey[c.key];
+    const d = (c.score != null && prev != null) ? c.score - prev : null;
+    const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
+    const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
+    // Plain-English explanation from the signal, if it provided one.
+    const why = explanationFor(cand, c);
+    host.appendChild(el("div", { class: "crit" },
+      el("div", { class: "k" }, prettyKey(c.key)),
+      el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
+      el("div", { class: `d delta ${dcls}` }, dtxt),
+      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
+      why ? el("div", { class: "why" }, why) : null,
+    ));
+  }
+}
+
+/* Read a per-subscore explanation from the candidate's raw signal details.
+   Returns null if the signal didn't emit one (e.g. legacy runs). */
+function explanationFor(cand, c) {
+  const det = cand?.details?.[c.source]?.details;
+  if (!det) return null;
+  const ex = det.explanations;
+  if (ex && typeof ex[c.key] === "string") return ex[c.key];
+  return null;
+}
+
+/* Current candidate on the stage. */
+function currentCand() {
+  const gen = STATE.manifest.generations[STATE.scrubIndex];
+  return gen.candidates[STATE.candIndex];
+}
+
+/* Flip to a specific sibling by index (clamped). Animates the crossfade. */
+function setCand(i) {
+  const gen = STATE.manifest.generations[STATE.scrubIndex];
+  const n = gen.candidates.length;
+  STATE.candIndex = ((i % n) + n) % n;
+  paintStage(gen, /*animate=*/true);
+  paintInfo(gen);
+  paintCriteria(gen);
+}
+function stepCand(d) { setCand(STATE.candIndex + d); }
+
+/* Saliency yes/no. */
+function setShowSaliency(v) {
+  STATE.showSaliency = !!v;
+  const t = document.getElementById("saliency-toggle");
+  if (t) t.classList.toggle("on", STATE.showSaliency);
+  const gen = STATE.manifest.generations[STATE.scrubIndex];
+  paintStage(gen, /*animate=*/false);
+}
+
+/* Auto-cycle through siblings. */
+function togglePlay() {
+  if (STATE.playTimer) { stopPlay(); return; }
+  const btn = document.getElementById("play-btn");
+  if (btn) { btn.classList.add("playing"); btn.textContent = "■ stop"; }
+  STATE.playTimer = setInterval(() => stepCand(1), 1400);
+}
+function stopPlay() {
+  if (STATE.playTimer) { clearInterval(STATE.playTimer); STATE.playTimer = null; }
+  const btn = document.getElementById("play-btn");
+  if (btn) { btn.classList.remove("playing"); btn.textContent = "▶ play"; }
+}
+
+function deltaText(d) {
+  if (d == null) return "first generation";
+  if (Math.abs(d) < 0.005) return "±0.00 vs prev winner";
+  const sign = d > 0 ? "+" : "";
+  return `${sign}${d.toFixed(2)} vs prev winner`;
+}
+function deltaClass(d) {
+  if (d == null) return "flat";
+  if (Math.abs(d) < 0.005) return "flat";
+  return d > 0 ? "pos" : "neg";
+}
+
+function renderChangedNote(manifest, gen) {
+  const linRec = (manifest.lineage || []).find(r => `gen-${String(r.generation).padStart(3, "0")}` === gen.id);
+  if (!linRec) return null;
+  const changed = linRec.changed;
+  if (!changed) return null;
+  return el("p", { class: "gen-changed" },
+    el("strong", null, "what changed: "),
+    changed,
+  );
+}
+
+function renderScrubber(gens) {
+  const combined = combinedSeries(gens);
+  const best = bestIndex(gens);
+  const n = gens.length;
+  const wrap = el("div", { class: "scrubber-wrap" });
+  const sc = el("div", { class: "scrubber" });
+  sc.appendChild(el("div", { class: "track" }));
+
+  // ticks
+  const pct = i => n === 1 ? 50 : (i / (n - 1)) * 100;
+  const progress = el("div", { class: "progress", style: `width:${pct(STATE.scrubIndex)}%` });
+  sc.appendChild(progress);
+
+  gens.forEach((g, i) => {
+    const v = combined[i];
+    const tick = el("div", {
+      class: `tick ${i === STATE.scrubIndex ? "active" : ""} ${i === best ? "best" : ""}`,
+      style: `left:${pct(i)}%`,
+      on: { click: () => {
+        STATE.scrubIndex = i;
+        // Reset candidate to the winner of the new gen, drop saliency overlay, stop autoplay.
+        const newGen = STATE.manifest.generations[i];
+        STATE.candIndex = Math.max(0, newGen.candidates.findIndex(c => c.id === newGen.winner));
+        STATE.showSaliency = false;
+        renderEvolution();
+      } },
+    },
+      el("div", { class: "dot" }),
+      el("div", { class: "lbl" }, g.id.replace(/^gen-0*/, "gen ")),
+      el("div", { class: "val" }, v != null ? v.toFixed(2) : "—"),
+    );
+    sc.appendChild(tick);
+  });
+
+  sc.appendChild(el("div", { class: "helper" },
+    el("span", null, "first impression"),
+    el("span", null, "click any gen to scrub"),
+    el("span", null, "polished")));
+
+  wrap.appendChild(sc);
+  return wrap;
+}
+
+function renderCriterionStrip(gen, prevWinner) {
+  const w = winnerOf(gen);
+  const wrap = el("div", { class: "criteria" });
+  if (!w || !w.criteria || w.criteria.length === 0) return wrap;
+  const prevByKey = Object.fromEntries((prevWinner?.criteria || []).map(c => [c.key, c.score]));
+  for (const c of w.criteria) {
+    const prev = prevByKey[c.key];
+    const d = (c.score != null && prev != null) ? c.score - prev : null;
+    const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
+    const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
+    wrap.appendChild(el("div", { class: "crit" },
+      el("div", { class: "k" }, prettyKey(c.key)),
+      el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
+      el("div", { class: `d delta ${dcls}` }, dtxt),
+      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
+    ));
+  }
+  return wrap;
+}
+
+// (siblings drawer removed — inline dots + arrows + auto-play on the stage handle this now.)
+
+// ============================================================
+// rendering — metrics page
+// ============================================================
+function renderMetrics() {
+  const m = STATE.manifest;
+  const gens = m.generations;
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  main.appendChild(el("section", { class: "metrics-head" },
+    el("div", { class: "eyebrow" }, m.brief || "AutoDesign run"),
+    el("h1", { class: "display" }, "the loop, in numbers."),
+    el("p", { class: "body-lead" },
+      "Every criterion plotted across generations. Sub-scores are 0–1; combined is 0–10. A green dot marks the best generation."),
+  ));
+
+  // ---- combined chart (big)
+  const combined = combinedSeries(gens);
+  const cur = combined[combined.length - 1];
+  const prev = combined.length > 1 ? combined[combined.length - 2] : null;
+  const d = (cur != null && prev != null) ? cur - prev : null;
+  const headlineCard = el("div", { class: "chart-card chart-headline" },
+    el("div", { class: "head" },
+      el("h3", null, "Combined score · 0–10"),
+      el("div", { class: "now" },
+        el("strong", null, fmt(cur, 2)),
+        el("span", { class: `d delta ${deltaClass(d)}` }, " " + deltaText(d)),
+      ),
+    ),
+    chartSVG(gens.map(g => g.id), combined, { maxY: 10, height: 260, fullLabels: true, markBest: true }),
+  );
+
+  // ---- small multiples
+  const keys = criterionKeys(gens);
+  const smallMultiples = el("div", { class: "small-multiples" });
+  for (const k of keys) {
+    const s = seriesFor(gens, k);
+    const c = s[s.length - 1];
+    const p = s.length > 1 ? s[s.length - 2] : null;
+    const dd = (c != null && p != null) ? c - p : null;
+    smallMultiples.appendChild(el("div", { class: "chart-card chart-small" },
+      el("div", { class: "head" },
+        el("h3", null, prettyKey(k)),
+        el("div", { class: "now" },
+          el("strong", null, fmt(c, 2)),
+          el("span", { class: `d delta ${deltaClass(dd)}` }, dd == null ? "" : ` ${dd>0?"+":""}${dd.toFixed(2)}`),
+        ),
+      ),
+      chartSVG(gens.map(g => g.id), s, { maxY: 1, height: 130, fullLabels: false, markBest: false }),
+    ));
+  }
+
+  main.appendChild(el("section", { class: "metrics-grid" },
+    headlineCard,
+    el("div", { class: "chart-card" },
+      el("div", { class: "head" }, el("h3", null, "Per-criterion evolution")),
+      smallMultiples,
+    ),
+  ));
+
+  // ---- VLM judge feedback placeholder
+  main.appendChild(renderVlmSection(gens));
+}
+
+function chartSVG(labels, values, opts) {
+  const { maxY = 10, height = 200, fullLabels = false, markBest = false } = opts || {};
+  const w = 1400;
+  const pad = { l: 44, r: 24, t: 18, b: 32 };
+  const xs = labels.map((_, i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(labels.length - 1, 1));
+  const ys = values.map(v => pad.t + (height - pad.t - pad.b) * (1 - ((v ?? 0) / maxY)));
+  const svg = svgNode("svg", { viewBox: `0 0 ${w} ${height}`, preserveAspectRatio: "none" });
+
+  // y grid
+  const ticks = maxY === 1 ? [0, 0.25, 0.5, 0.75, 1] : [0, 2, 4, 6, 8, 10];
+  for (const t of ticks) {
+    const y = pad.t + (height - pad.t - pad.b) * (1 - t / maxY);
+    svg.appendChild(svgNode("line", {
+      x1: pad.l, x2: w - pad.r, y1: y, y2: y,
+      class: t === 0 ? "axis-line" : "axis-line faint",
+    }));
+    const lbl = svgNode("text", {
+      x: pad.l - 8, y: y + 4, "text-anchor": "end", class: "axis-tick",
+    });
+    lbl.textContent = maxY === 1 ? t.toFixed(2) : String(t);
+    svg.appendChild(lbl);
+  }
+
+  // area + line
+  if (values.some(v => v != null)) {
+    const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+    const area = svgNode("polygon", {
+      points: `${xs[0]},${height - pad.b} ${pts} ${xs[xs.length - 1]},${height - pad.b}`,
+      class: "series-area",
+    });
+    svg.appendChild(area);
+    const line = svgNode("polyline", { points: pts, class: "series-line" });
+    svg.appendChild(line);
+  }
+
+  // best index (for combined chart marker)
+  let best = -1, bv = -Infinity;
+  if (markBest) values.forEach((v, i) => { if (v != null && v > bv) { bv = v; best = i; } });
+
+  // dots
+  values.forEach((v, i) => {
+    if (v == null) return;
+    svg.appendChild(svgNode("circle", {
+      cx: xs[i], cy: ys[i], r: i === best ? 6 : 4,
+      class: `series-dot ${i === best ? "best" : ""}`,
+    }));
+    if (fullLabels) {
+      const lbl = svgNode("text", { x: xs[i], y: ys[i] - 12, "text-anchor": "middle", class: "series-value" });
+      lbl.textContent = v.toFixed(2);
+      svg.appendChild(lbl);
+    }
+  });
+
+  // x labels
+  labels.forEach((lab, i) => {
+    const t = svgNode("text", { x: xs[i], y: height - 10, "text-anchor": "middle", class: "axis-tick" });
+    t.textContent = lab.replace(/^gen-0*/, "gen ");
+    svg.appendChild(t);
+  });
+
+  return svg;
+}
+
+function renderVlmSection(gens) {
+  const wrap = el("section", { class: "vlm-section" },
+    el("div", { class: "head" },
+      el("h3", null, "VLM judge"),
+      el("span", { class: "badge" }, "not yet implemented"),
+    ),
+    el("p", { class: "body-lead", style: "margin-top:0" },
+      "When the VLM judge signal lands, each generation’s winner will get a one-sentence verdict here, alongside its taste / brief-adherence / hierarchy sub-scores."),
+  );
+  const list = el("div", { class: "vlm-list" });
+  for (const g of gens) {
+    const w = winnerOf(g);
+    list.appendChild(el("div", { class: "vlm-card" },
+      el("div", { class: "gen" }, g.id),
+      el("div", { class: "feedback" },
+        w?.combined != null ? `awaiting judge — saliency placed it at ${w.combined.toFixed(2)} / 10` : "awaiting judge"),
+    ));
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+// ============================================================
+// lightbox
+// ============================================================
 function openLightbox(cand) {
-  const box = document.getElementById("lightbox");
-  document.getElementById("lightbox-title").textContent = `${cand.id} · combined ${fmt(cand.combined)}`;
-  const iframe = document.getElementById("lightbox-iframe");
-  const overlay = document.getElementById("lightbox-overlay");
-  iframe.src = cand.html || "about:blank";
-  overlay.src = cand.saliency || cand.frames?.[0] || "";
-  box.classList.add("open");
+  document.getElementById("lightbox-title").textContent = `${cand.id} · ${cand.combined != null ? cand.combined.toFixed(2) : "—"}`;
+  document.getElementById("lightbox-iframe").src = cand.html || "about:blank";
+  document.getElementById("lightbox").classList.add("open");
 }
 function closeLightbox() {
   document.getElementById("lightbox").classList.remove("open");
@@ -600,25 +1151,51 @@ function closeLightbox() {
 document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeLightbox(); });
 
+// ============================================================
+// nav + boot
+// ============================================================
+function setView(v) {
+  STATE.view = v;
+  stopPlay();
+  for (const b of document.querySelectorAll(".nav button")) {
+    b.classList.toggle("active", b.dataset.view === v);
+  }
+  if (v === "evolution") renderEvolution();
+  else renderMetrics();
+}
+for (const b of document.querySelectorAll(".nav button")) {
+  b.addEventListener("click", () => setView(b.dataset.view));
+}
+
+async function loadRun(rid) {
+  stopPlay();
+  STATE.runId = rid;
+  const m = await jget(`/api/run/${rid}`);
+  STATE.manifest = m;
+  STATE.scrubIndex = bestIndex(m.generations);  // start on the best gen
+  const bestGen = m.generations[STATE.scrubIndex];
+  STATE.candIndex = Math.max(0, bestGen.candidates.findIndex(c => c.id === bestGen.winner));
+  STATE.showSaliency = false;
+  const stat = document.getElementById("meta-stat");
+  const wn = winnerOf(bestGen);
+  stat.textContent = `${m.generations.length} gens · best ${bestGen.id} · ${wn?.combined?.toFixed(2) ?? "—"}`;
+  setView(STATE.view);
+}
+
 async function boot() {
   const { runs = [] } = await jget("/api/runs");
+  STATE.runs = runs;
   const picker = document.getElementById("run-picker");
+  picker.innerHTML = "";
   if (runs.length === 0) {
     document.getElementById("main").innerHTML =
       `<p class="empty">No runs yet. Trigger <code>/autodesign &lt;brief&gt;</code> from chat.</p>`;
     return;
   }
-  picker.innerHTML = "";
   for (const r of runs) picker.appendChild(el("option", { value: r }, r));
   picker.value = runs[0];
   picker.addEventListener("change", () => loadRun(picker.value));
-  await loadRun(picker.value);
-}
-
-async function loadRun(rid) {
-  CURRENT_RUN = rid;
-  const manifest = await jget(`/api/run/${rid}`);
-  renderRun(manifest);
+  await loadRun(runs[0]);
 }
 
 boot().catch(err => {

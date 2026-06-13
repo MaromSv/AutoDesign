@@ -63,6 +63,7 @@ WINNER_FILENAME = "winner.json"
 HTML_FILENAME = "index.html"
 SALIENCY_FILENAME = "saliency.png"
 FRAMES_DIRNAME = "frames"
+VIDEO_FILENAME = "animation.webm"
 FINAL_FILENAME = "final.html"
 
 

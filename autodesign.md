@@ -6,8 +6,12 @@ and read by every other module.
 
 ## Brief
 
-> TODO: replace this with the design brief for the current run. One paragraph is
-> enough — what to build, who it is for, the tone, any non-negotiables.
+> A landing page for **Space Jam** — an indie space game. Hero shows the
+> game's hook, a single primary CTA ("Play Free Demo") pulls the eye, supporting
+> elements (one screenshot/illustration, one tagline) reinforce vibe without
+> stealing attention. Tone: confident arcade-sci-fi, not corporate. The CTA
+> must end up inside `saliency.focal_bbox` and any entrance animation must
+> resolve attention onto it.
 
 ## How this file is consumed
 
@@ -27,8 +31,8 @@ brief: |
 
 loop:
   initial_candidates: 5    # number of siblings to generate in gen-0 (the wide first pass)
-  iterations: 5            # max refinement generations after gen-0 (each iterates the previous winner)
-  target_score: 8.0        # stop early when the best combined score meets/exceeds this
+  iterations: 10           # max refinement generations after gen-0 (each iterates the previous winner)
+  target_score: 9.0        # stop early when the best combined score meets/exceeds this
   diversity: 0.35          # minimum embedding distance required between gen-0 siblings (placeholder)
 
 models:
@@ -49,7 +53,7 @@ criteria:
 saliency:
   # Which region of the page the saliency signal should optimize attention toward.
   focal_element: "primary_cta"    # CSS-selector-ish hint; signal-specific
-  focal_bbox:    [0.10, 0.20, 0.55, 0.45]   # [x, y, w, h] in viewport-relative units
+  focal_bbox:    [0.10, 0.20, 0.55, 0.45]   # [x0, y0, x1, y1] as fractions of the viewport (top-left to bottom-right)
 
 capture:
   viewport:           [1280, 800]

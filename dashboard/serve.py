@@ -21,6 +21,7 @@ beyond `pipeline.artifacts` (the disk-layout contract).
                 "html": "/.autodesign/.../index.html" | null,
                 "frames": ["/.autodesign/.../frames/0000.png", ...],
                 "saliency": "/.autodesign/.../saliency.png" | null,
+                "video": "/.autodesign/.../animation.webm" | null,
                 "combined": <float|null>,
                 "per_criterion": { "<key>": <float|null>, ... },
                 "critique": "...",
@@ -49,6 +50,7 @@ from pipeline.artifacts import (
     RUNS_ROOT,
     SALIENCY_FILENAME,
     SCORES_FILENAME,
+    VIDEO_FILENAME,
     WINNER_FILENAME,
 )
 
@@ -104,13 +106,55 @@ def _extract_hypothesis(html_path: Path) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
+    """Decompose signal outputs into a flat list of individual criteria.
+
+    Each entry is `{key, score (0-1), weight, source}`. A signal that exposes
+    `details.subscores` and `details.weights` (e.g. SaliencySignal) becomes
+    multiple flat criteria — one per sub-score. A signal that does not (VLM
+    judge today, when implemented) appears as a single criterion under its own
+    key, with the engine-level weight defaulting to 1.0 until the signal opts
+    in to decomposition.
+    """
+    out: list[dict] = []
+    seen_sources: set[str] = set()
+    for source, payload in raw.items():
+        details = payload.get("details") or {}
+        subs = details.get("subscores") or {}
+        weights = details.get("weights") or {}
+        # Decomposed criteria: prefer these and skip the coarse signal score.
+        if subs:
+            for sub_key, sub_val in subs.items():
+                if sub_key == "total":
+                    continue
+                out.append({
+                    "key": sub_key,
+                    "score": sub_val,  # already 0-1
+                    "weight": weights.get(sub_key),
+                    "source": source,
+                })
+            seen_sources.add(source)
+    # Signals with no decomposition: surface as a single flat criterion.
+    for k, v in per_criterion.items():
+        if k in seen_sources:
+            continue
+        out.append({
+            "key": k,
+            "score": (v / 10.0) if isinstance(v, (int, float)) else None,
+            "weight": None,
+            "source": k,
+        })
+    return out
+
+
 def _candidate_manifest(cand_path: Path) -> dict:
     """One candidate entry in the per-generation `candidates` list."""
     scores = _read_json(cand_path / SCORES_FILENAME) or {}
     html = cand_path / HTML_FILENAME
     saliency = cand_path / SALIENCY_FILENAME
+    video = cand_path / VIDEO_FILENAME
     raw = scores.get("raw", {})
-    # Surface subscores directly so the dashboard does not have to dig.
+    per_criterion = scores.get("per_criterion", {})
     subscores = {}
     for key, payload in raw.items():
         sub = (payload.get("details") or {}).get("subscores")
@@ -121,8 +165,12 @@ def _candidate_manifest(cand_path: Path) -> dict:
         "html": _url_for(html) if html.exists() else None,
         "frames": _list_frames(cand_path),
         "saliency": _url_for(saliency) if saliency.exists() else None,
+        "video": _url_for(video) if video.exists() else None,
         "combined": scores.get("combined"),
-        "per_criterion": scores.get("per_criterion", {}),
+        # New flat shape — the primary surface for the dashboard.
+        "criteria": _flat_criteria(raw, per_criterion),
+        # Legacy nested shape — kept for now so older clients still work.
+        "per_criterion": per_criterion,
         "subscores": subscores,
         "details": raw,
         "hypothesis": _extract_hypothesis(html) if html.exists() else None,
