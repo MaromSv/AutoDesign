@@ -1,4 +1,4 @@
-# autodesign
+# AutoDesign
 
 **benchmarking the slop out of AI.**
 
@@ -6,7 +6,7 @@ AI generates interfaces fast but almost all of it looks the same. Everyone can *
 which UI is better. Nobody can *measure* it. AutoDesign is a benchmark and an agent loop
 that does. By Marom and Oliver.
 
-> Leaderboard: **[TODO: leaderboard URL]**
+> Leaderboard: **[View the live leaderboard →](https://maroms-mac-mini.tailf108b0.ts.net/)**
 
 ![hero](docs/screenshots/hero.png)
 
@@ -22,30 +22,39 @@ purple-gradient slop, because the only feedback signal is human vibes.
 
 We built the rubric, the scorer, and the agent loop that climbs it.
 
-![problem](docs/screenshots/problem.png)
+![problem](docs/screenshots/goodvsbad.png)
 
 ---
 
 ## The benchmark (the part nobody had built)
 
-A composite score over **24 sub-metrics in 8 themed buckets**, weighted in
-[`autodesign.md`](autodesign.md). Three of those buckets are signals we
-implemented from scratch:
+A candidate's score is a weighted blend of **~18 signals grouped into 8 buckets** (defined
+in [`autodesign.md`](autodesign.md)) — creativity weighs heaviest. What powers each:
 
-| Bucket | Source | What's novel |
-|---|---|---|
-| **Attention** (`intent_alignment`, `focus_clarity`, `reading_order`) | DeepGaze saliency map | scan-path geometry derived from a pretrained gaze model — not just "is the CTA visible" |
-| **Motion** (`animation_focus`) | multi-frame saliency over a 5s capture | does the entrance *resolve* attention onto the CTA by the settled frame |
-| **Distinctiveness** (`creativity`, `originality`, `ai_pitfalls`, `brain_judge`) | VLM rubric + research agent + **a model we trained** | quantifies distance from AI-slop |
-| Hierarchy / color / type / usability | VLM-as-judge (Opus) | rubric-grounded principle scoring |
-| **Brief fidelity** (`prompt_consistency`) | Nemotron text check | every brief element actually shipped? |
-| **Function** (`stress_test`) | Nemotron + headless browser sub-agents | do buttons/links actually behave |
+- **Attention & Motion** — [DeepGaze](https://github.com/matthias-k/DeepGaze), a pretrained
+  gaze model, predicts *where a real viewer's eye would land*, and whether the entrance
+  animation resolves that attention onto the CTA.
+- **Hierarchy · Color & Type · Usability** — **Claude as a vision judge** scores the rendered
+  page against a UX rubric.
+- **Distinctiveness** — how far the design is from generic AI-slop: the vision judge + a
+  research agent that fetches real competitors + **`brain_judge`**, an SVM we trained (below).
+- **Brief fidelity** — a **Nemotron** text check confirms every element the brief asked for
+  actually shipped.
+- **Function** — **Nemotron sub-agents** drive a real headless browser (click / type / read)
+  to verify the controls actually work.
+
+Claude agents generate each candidate UI; the vision judge then turns these scores into the
+creative direction + fixes that drive the next round.
+
+![The 8 scoring criteria and the technology behind each](docs/screenshots/table.png)
 
 ### The model we trained: `brain_judge`
 
-A perceptual classifier (RBF SVM, **CV-AUC 0.85**) over clutter, colorfulness,
-whitespace, contrast, symmetry, and hue-entropy, trained on awwwards winners
-(masterpiece) vs. madewithlovable (slop). Plugs in as a single `Signal`.
+An SVM we trained to tell **good, hand-crafted websites apart from AI-generated slop**.
+It's an RBF SVM (**CV-AUC 0.85**) over interpretable perceptual features — clutter,
+colorfulness, whitespace, contrast, symmetry, hue-entropy — trained on **awwwards winners
+(good) vs. madewithlovable / Lovable pages (AI-generated)**. It scores how much a candidate
+*looks* designed vs. templated, and plugs into the loop as a single `Signal`.
 [`pipeline/brain/`](pipeline/brain/).
 
 ![slop-vs-masterpiece](docs/screenshots/slop_vs_masterpiece.png)
@@ -86,17 +95,19 @@ overrides, not hard-coded.
 
 | Job | Model | Why |
 |---|---|---|
-| In-loop UI generation | **Sonnet** | needs taste, but called every iteration |
-| Critic refinement plan | **Sonnet** | structured reasoning over scores.json |
-| Final VLM judge (visual rubric) | **Opus** | most consequential signal, run once per candidate |
-| Persona reactions | **Haiku** | cheap, called often |
+| In-loop UI generation (`generator`) | **Claude Sonnet** | needs design taste, and runs every iteration |
+| Critic refinement plan (`critic`) | **Claude Sonnet** | structured reasoning over `scores.json` |
+| VLM judge — visual rubric + creative direction (`vlm_judge`) | **Claude Sonnet** | the dominant signal (weight 0.8); Sonnet keeps the per-candidate cost down |
+| Competitor research for originality (`references`) | **Claude Sonnet** + web search | one cached web-search pass per run |
 | Brief-presence text check (`prompt_consistency`) | **Nemotron** (Nebius Token Factory) | pure text comparison — no need to pay frontier rates |
-| Headless-browser stress test sub-agents | **Nemotron** | many short tool-call turns; cost adds up fast |
-| Slop classifier (`brain_judge`) | **local sklearn** | no API call at all |
+| Headless-browser stress-test sub-agents (`stress_test`) | **Nemotron** (Nebius) | many short tool-call turns; cost adds up fast |
+| Attention / saliency (`saliency`) | **DeepGaze IIE/III** (local PyTorch) | no API call — runs on the machine |
+| Slop / design classifier (`brain_judge`) | **local scikit-learn SVM** | no API call |
 
-The Nemotron pair runs on Nebius Token Factory's OpenAI-compatible endpoint;
-both signals **skip cleanly** if `NEBIUS_API_KEY` is unset, so the loop degrades
-gracefully instead of failing.
+The judge tier is set by `models.judge` in [`autodesign.md`](autodesign.md) (currently
+Sonnet; bump it to Opus there for a higher-quality final pass). The Nemotron pair runs on
+Nebius Token Factory's OpenAI-compatible endpoint and **skips cleanly** if `NEBIUS_API_KEY`
+is unset, so the loop degrades gracefully instead of failing.
 
 ### Parallel sub-agents
 
@@ -115,11 +126,10 @@ with its own system prompt and its own model tier in frontmatter:
 
 - **`generator`** (sonnet) — builds the HTML
 - **`critic`** (sonnet) — reads scores, plans the next iteration
-- **`judge`** (opus) — final VLM rubric pass
-- **`persona`** (haiku) — fast gut-reaction signal
+- **`judge`** (sonnet) — VLM rubric pass + the round's creative design direction
 
-Roles are *independently swappable*. Change the model for one role without
-touching the others.
+Roles are *independently swappable*. Change the model for one role in
+[`autodesign.md`](autodesign.md) → `models:` without touching the others.
 
 ---
 
@@ -152,7 +162,7 @@ python dashboard/serve.py    # read-only dashboard on .autodesign/runs/
 - [`pipeline/`](pipeline/) — engine, signal registry, capture
 - [`pipeline/signals/`](pipeline/signals/) — pluggable evaluations
 - [`pipeline/brain/`](pipeline/brain/) — the trained slop classifier
-- [`.claude/agents/`](.claude/agents/) — generator / critic / judge / persona
+- [`.claude/agents/`](.claude/agents/) — generator / critic / judge
 - [`.claude/skills/autodesign/`](.claude/skills/autodesign/) — loop protocol
 - [`dashboard/`](dashboard/) — read-only run viewer
 - [`leaderboard/`](leaderboard/) — public leaderboard site
