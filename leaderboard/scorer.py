@@ -26,7 +26,14 @@ _NO_BRIEF_DIRECTIVE = (
     "quality only — creativity & distinctiveness, visual hierarchy, color & "
     "typography, motion, and overall design taste. Do NOT assume the page is for "
     "any specific product (game, SaaS, etc.) or compare it against a brief; the "
-    "page is whatever its makers shipped, and that is what you are evaluating."
+    "page is whatever its makers shipped, and that is what you are evaluating.\n\n"
+    "Ignore overlay infrastructure that is required of every real deployed site "
+    "and is not a design choice: cookie / GDPR consent banners, region selectors, "
+    "newsletter-popup modals, 'allow notifications' prompts, language pickers, "
+    "and any 'use a modern browser' or no-JS warnings. Do not list them in `issues`, "
+    "do not let them lower visual_hierarchy, layout_spacing, or any other score, "
+    "and do not propose redesigning them in `explorations`. Score the underlying "
+    "page as if those overlays were dismissed."
 )
 
 
@@ -59,13 +66,17 @@ def score_url(
     # instead of falling back to autodesign.md's prose Space Jam brief.
     effective_brief = (brief or "").strip() or _NO_BRIEF_DIRECTIVE
 
+    # use_references=True triggers the research agent (seeded on the submitted
+    # URL itself, not the brief) so the vlm_judge also scores `originality`
+    # vs. real competitor screenshots. Costs an extra ~1-2 min and a few
+    # Claude calls per submission; enabled by user opt-in.
     records = rank_urls(
         urls=[url],
         config=config,
         out_dir=out_root,
         brief=effective_brief,
         labels=None,
-        use_references=False,
+        use_references=True,
     )
     if not records:
         raise RuntimeError("rank_urls returned no records")

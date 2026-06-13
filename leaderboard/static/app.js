@@ -321,45 +321,39 @@ function readMetric(metric, judge, saliency, perCriterion, judgeWhy, salWhy, jud
 }
 
 function bucketHtml(bucket, i, judge, saliency, perCriterion) {
-  const rows = bucket.metrics.map((m) => {
-    const r = readMetric(m, judge, saliency, perCriterion);
-    const val = r.present
-      ? `<div class="val">${r.score10.toFixed(1)}<sup>/ 10</sup></div>`
-      : `<div class="val skip">n/a</div>`;
-    const why = r.present
-      ? `<div class="why">${escapeHtml(r.why || "")}</div>`
-      : `<div class="why">${escapeHtml(m.blurb)}</div>`;
-    return `
-      <div class="metric">
-        <div class="left">
-          <div class="name">${escapeHtml(m.key)}<span class="wt">wt ${m.wt.toFixed(2)}</span></div>
-          ${why}
-        </div>
-        ${val}
-      </div>
-    `;
-  }).join("");
+  // Only render metrics that actually produced a score. Skipped metrics are
+  // EXCLUDED from the weighted average — they're not penalties — so hiding
+  // them keeps the modal honest about what contributed to the bucket score.
+  const present = bucket.metrics
+    .map((m) => ({ m, r: readMetric(m, judge, saliency, perCriterion) }))
+    .filter((x) => x.r.present);
 
-  // Bucket aggregate: weighted mean of present metrics.
-  const present = bucket.metrics.map((m) => readMetric(m, judge, saliency, perCriterion)).filter((r) => r.present);
-  let aggHtml;
-  if (present.length === 0) {
-    aggHtml = `<div class="bucket-score skip">n/a</div>`;
-  } else {
-    const wsum = present.reduce((a, r) => a + r.weight, 0);
-    const num  = present.reduce((a, r) => a + r.weight * r.score10, 0);
-    const agg = wsum > 0 ? num / wsum : 0;
-    aggHtml = `<div class="bucket-score">${agg.toFixed(1)}<sup>/ 10</sup></div>`;
-  }
+  // Hide the entire bucket if nothing in it scored — better than showing an
+  // "n/a" bucket header that looks like a missing grade.
+  if (present.length === 0) return "";
+
+  const rows = present.map(({ m, r }) => `
+    <div class="metric">
+      <div class="left">
+        <div class="name">${escapeHtml(m.key)}<span class="wt">wt ${m.wt.toFixed(2)}</span></div>
+        <div class="why">${escapeHtml(r.why || m.blurb)}</div>
+      </div>
+      <div class="val">${r.score10.toFixed(1)}<sup>/ 10</sup></div>
+    </div>
+  `).join("");
+
+  const wsum = present.reduce((a, x) => a + x.r.weight, 0);
+  const num  = present.reduce((a, x) => a + x.r.weight * x.r.score10, 0);
+  const agg = wsum > 0 ? num / wsum : 0;
 
   return `
-    <section class="bucket ${present.length === 0 ? 'skipped' : ''}">
+    <section class="bucket">
       <div class="bucket-head">
         <h4 class="bucket-h">
           <span class="num">${String(i + 1).padStart(2, "0")}</span>${escapeHtml(bucket.name)}
           <span class="src">${escapeHtml(bucket.source_label)}</span>
         </h4>
-        ${aggHtml}
+        <div class="bucket-score">${agg.toFixed(1)}<sup>/ 10</sup></div>
       </div>
       <div class="bucket-rows">${rows}</div>
     </section>

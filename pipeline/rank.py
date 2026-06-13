@@ -69,6 +69,7 @@ def _capture_settings(config: dict) -> dict:
         "viewport": (int(vp[0]), int(vp[1])),
         "animation_seconds": float(cap.get("animation_seconds", 0.0)),
         "keyframes": list(cap.get("keyframes") or [0.0]),
+        "hide_selectors": list(cap.get("hide_selectors") or []),
     }
 
 

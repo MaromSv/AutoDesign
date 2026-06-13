@@ -31,16 +31,44 @@ ai_pitfalls:
   weight:  2.5
   render:  false
 
-# Originality vs. real-competitor screenshots. Disabled by default on the public
-# leaderboard because the research agent + parallel peer capture is slow / costs
-# extra Claude calls per submission. Flip to true once you want it.
+# Originality vs. real-competitor screenshots. The research agent infers the
+# submitted site's use case from the URL, web-searches for live competitor
+# products, captures their screenshots, and feeds them to the same VLM call —
+# which then also scores the `originality` principle (weight 3.0 in the rubric).
+# Adds ~1-2 min and a few extra Claude calls per submission; user explicitly
+# opted into this cost for the leaderboard.
 originality:
-  enabled: false
+  enabled:      true
+  n_references: 5    # peer screenshots kept (caps the expensive render step)
+  n_candidates: 10   # URLs the agent returns; we over-fetch then keep what renders
 
 capture:
   viewport:           [1280, 800]
   animation_seconds:  5.0
   keyframes:          [0.0, 0.25, 0.5, 0.75, 1.0]
+  # Hide overlay infrastructure before screenshots. These elements are
+  # required of every real deployed site (GDPR, marketing, region) but
+  # are NOT design choices and skew saliency toward the bottom of the
+  # viewport. Loose attribute selectors so common one-tag-fits-all
+  # banners (#onetrust-banner-sdk, .cookie-consent, etc.) all get caught.
+  hide_selectors:
+    - "[id*='cookie' i]"
+    - "[class*='cookie' i]"
+    - "[id*='consent' i]"
+    - "[class*='consent' i]"
+    - "[id*='gdpr' i]"
+    - "[class*='gdpr' i]"
+    - "[id*='onetrust' i]"
+    - "[class*='onetrust' i]"
+    - "[aria-label*='cookie' i]"
+    - "[aria-label*='consent' i]"
+    - "#CybotCookiebotDialog"
+    - ".cc-window"
+    - ".osano-cm-window"
+    - "[id*='newsletter-popup' i]"
+    - "[class*='newsletter-popup' i]"
+    - "[role='dialog'][aria-label*='subscribe' i]"
+    - "[role='dialog'][aria-label*='notification' i]"
 
 vlm_judge:
   # Same rubric as the research loop, minus the principles that can't be judged

@@ -64,6 +64,7 @@ def capture(
     viewport: tuple[int, int] = (1280, 800),
     animation_seconds: float = 0.0,
     keyframes: list[float] | None = None,
+    hide_selectors: list[str] | None = None,
 ) -> CaptureResult:
     """Render `html_path` and screenshot it into `out_dir/frames/`.
 
@@ -133,6 +134,20 @@ def capture(
             except Exception:
                 # networkidle can time out on pages that poll forever; fall back to load.
                 page.goto(url, wait_until="load")
+
+            # Hide overlay infrastructure (cookie banners, GDPR/consent prompts,
+            # newsletter popups, region selectors) before screenshots. These are
+            # required of every real deployed site but are not design choices —
+            # they crowd the focal area and skew DeepGaze saliency toward the
+            # bottom of the viewport. Best-effort: a malformed selector list
+            # should never break capture.
+            if hide_selectors:
+                joined = ", ".join(s for s in hide_selectors if s and isinstance(s, str))
+                if joined:
+                    try:
+                        page.add_style_tag(content=f"{joined} {{ display: none !important; visibility: hidden !important; }}")
+                    except Exception:  # noqa: BLE001 - never fail capture over an overlay hide
+                        pass
 
             # Save the post-JS DOM next to the frames for the ai_pitfalls fingerprint
             # matching; benchmark/_resolve_paths picks it up as the candidate's html.
