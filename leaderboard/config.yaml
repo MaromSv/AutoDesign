@@ -1,0 +1,59 @@
+# Public leaderboard scoring config. Mirrors autodesign.md's `criteria` block
+# (so the same signals run as in the research loop), with the brief-dependent
+# pieces dropped because there is no design brief for an arbitrary submitted
+# URL. Anything that needs a brief either zeroed in weights or removed.
+
+criteria:
+  # On the public leaderboard we keep the signals that meaningfully judge a
+  # static screenshot/animation of someone else's deployed site:
+  #   saliency    — where attention goes (no brief or interaction needed)
+  #   vlm_judge   — design quality (creativity / hierarchy / color / type)
+  #   brain_judge — perceptual classifier (no API or brief needed)
+  # Dropped from the leaderboard:
+  #   prompt_consistency — needs a design brief (we don't have one)
+  #   stress_test        — interaction QA breaks on real apps: the deterministic
+  #                        probe clicks every element and counts every nav as a
+  #                        "broken" link, so well-built sites get 0.
+  saliency:    0.2
+  vlm_judge:   0.8
+  brain_judge: 0.2   # perceptual-fallback RBF SVM (clutter, color, whitespace, contrast, symmetry, hue-entropy)
+
+models:
+  judge:      opus
+  cheap_pass: haiku
+
+# No focal_bbox here — the submitter doesn't tell us where the primary CTA is
+# on their page, so intent_alignment + animation_focus saliency subscores skip.
+# focus_clarity and reading_order still score (they don't need a bbox).
+
+ai_pitfalls:
+  enabled: true
+  weight:  2.5
+  render:  false
+
+# Originality vs. real-competitor screenshots. Disabled by default on the public
+# leaderboard because the research agent + parallel peer capture is slow / costs
+# extra Claude calls per submission. Flip to true once you want it.
+originality:
+  enabled: false
+
+capture:
+  viewport:           [1280, 800]
+  animation_seconds:  5.0
+  keyframes:          [0.0, 0.25, 0.5, 0.75, 1.0]
+
+vlm_judge:
+  # Same rubric as the research loop, minus the principles that can't be judged
+  # honestly on an arbitrary submitted URL:
+  #   brief_adherence    — there's no brief, so "visual match to brief" is meaningless
+  #   affordance_clarity — "clarity of the primary CTA" needs to know what the page
+  #                        is trying to convert on; without that, the judge defaults
+  #                        to penalizing pages that aren't generic SaaS landers.
+  weights:
+    brief_adherence:    0.0
+    affordance_clarity: 0.0
+
+# Nemotron-backed signals are off in `criteria:` above, so this block is unused
+# in the leaderboard. Left here as a placeholder so it's easy to re-enable later.
+# nemotron:
+#   api_key_env: NEBIUS_API_KEY

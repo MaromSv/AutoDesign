@@ -1,0 +1,36 @@
+# Mac mini deployment.
+#
+#   1. Put your ANTHROPIC_API_KEY in leaderboard/.env (next to this file).
+#   2. From the leaderboard/ directory, run:
+#        docker compose up -d --build
+#   3. The leaderboard is now on http://localhost:8080.
+#   4. To expose it to the public, run a Cloudflare Tunnel (see README.md).
+
+services:
+  leaderboard:
+    build:
+      # Build context is the AutoDesign root so the Dockerfile can COPY pipeline/.
+      context: ..
+      dockerfile: leaderboard/Dockerfile
+    image: autodesign-leaderboard:latest
+    container_name: autodesign-leaderboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Forwarded into the app process. Override here, in .env, or in the shell.
+      LEADERBOARD_DATA_DIR: /data
+      LEADERBOARD_CONFIG: /app/leaderboard/config.yaml
+      LOG_LEVEL: INFO
+    volumes:
+      # SQLite DB, rendered frames, video, saliency overlays — all under /data.
+      # Stored under leaderboard/data/ on the host so back-ups are easy.
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/api/queue', timeout=3).getcode()==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s

@@ -1,0 +1,28 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+jinja2==3.1.5
+
+# Pipeline reuse — these mirror what AutoDesign needs.
+anthropic>=0.39
+playwright==1.49.1
+pyyaml>=6.0
+numpy>=1.26,<3
+scipy>=1.11
+Pillow>=10.0
+matplotlib>=3.7
+
+# DeepGaze (saliency). Torch is installed separately in the Dockerfile so we can
+# pick the right wheel for the architecture (arm64 for Mac mini).
+# CLIP is required by deepgaze_pytorch's package __init__ (clip_resnet feature
+# extractor) even when we only use DeepGazeIIE/III, so we must install it.
+ftfy
+regex
+einops
+clip @ git+https://github.com/openai/CLIP.git
+deepgaze-pytorch @ git+https://github.com/matthias-k/DeepGaze.git
+
+# brain_judge signal — RBF SVM classifier loaded from data/brain/model.joblib.
+# Left unpinned: the model unpickles cleanly across recent sklearn versions
+# (you may see a "trained on X / running Y" warning, but the load succeeds).
+scikit-learn
