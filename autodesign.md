@@ -46,17 +46,19 @@ criteria:
   # Signal key -> weight. Weights are renormalized over signals that returned a
   # non-None score, so a skipped signal does not penalize the candidate.
   # Add a new entry here AND a matching @register_signal class to extend.
-  # vlm_judge carries the heavy lift now — it folds in the ai_pitfalls (AI-slop) and
-  # originality (vs. competitors) principles on top of the 9 UX principles — so it is
-  # weighted above the narrower saliency (attention-to-focal-region) signal.
-  saliency:  0.4
-  vlm_judge: 0.6
-  # The two Nemotron signals are deliberately scoped to NOT overlap with vlm_judge/saliency:
-  # prompt_consistency judges content/feature PRESENCE (not looks); stress_test judges
-  # interaction BEHAVIOR (not looks/content). Enable both when NEBIUS_API_KEY is set.
-  prompt_consistency: 0.5   # Nemotron: is every requested element/feature actually in the build? (text, not visual)
-  stress_test:        0.4   # Nemotron + headless browser: do buttons/links work & behave consistently? (behavior only)
-  brain_judge: 0.2   # perceptual-fallback classifier (RBF SVM, CV-AUC 0.85) vs awwwards/Lovable; NOT real brain data yet
+  # vlm_judge is the creativity engine — its creativity/originality principles drive the
+  # bulk of the score (how far from AI-slop, how distinct from real competitors). Saliency
+  # stays as a floor (attention still has to land on the right element) but does not get to
+  # dominate a creatively bold page.
+  saliency:  0.2
+  vlm_judge: 0.8
+  # The Nemotron + classifier signals are deliberately scoped to NOT overlap with vlm_judge/
+  # saliency: prompt_consistency judges content/feature PRESENCE (not looks); stress_test
+  # judges interaction BEHAVIOR; brain_judge scores perceptual design-DNA. Enable the
+  # Nemotron pair when NEBIUS_API_KEY is set.
+  prompt_consistency: 0.4   # Nemotron: is every requested element/feature actually in the build? (text, not visual)
+  stress_test:        0.3   # Nemotron + headless browser: do buttons/links work & behave consistently? (behavior only)
+  brain_judge:        0.2   # perceptual-fallback classifier (RBF SVM, CV-AUC 0.85) vs awwwards/Lovable; NOT real brain data yet
 
 saliency:
   # Which region of the page the saliency signal should optimize attention toward.
