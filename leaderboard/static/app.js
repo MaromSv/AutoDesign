@@ -164,7 +164,6 @@ async function refreshLeaderboard() {
       el.addEventListener("click", () => openDetail(Number(el.dataset.id)))
     );
     document.getElementById("m-done").textContent = rows.length;
-    document.getElementById("m-updated").textContent = `updated ${relTime(Date.now() / 1000)}`;
   } catch {
     boardTop.innerHTML = `<div class="empty">Couldn't load the leaderboard.</div>`;
   }
