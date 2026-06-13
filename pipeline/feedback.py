@@ -1,17 +1,18 @@
 """Turn a scored candidate into a ready-to-apply feedback brief for the next round.
 
-The refinement step of the loop only improves if the *concrete* feedback the
-evaluators produced actually reaches the generator. Two sources matter:
+The refinement step only improves if the concrete feedback every evaluator produced
+actually reaches the generator. This module responds to ALL criteria in scores.json and
+formats one markdown block to paste straight into the generator's edit prompt:
 
-  - The VLM judge's `issues` (raw.vlm_judge.details.issues): located, worst-first
-    `{where, problem, fix, severity}` — the most actionable signal in the run.
-  - The critic's `critique` + `nameable_decisions`, once the loop has merged them.
+  - VLM judge `explorations` — bold creative design moves to try (the PRIORITY: make it
+    more striking), and `issues` — located `{where, problem, fix, severity}` refinements.
+  - ai_pitfalls slop evidence + brain_judge classifier — when the design reads as
+    AI-generated, steer the creative direction to break AWAY from template conventions.
+  - saliency (attention off-target), stress_test (broken interactions), prompt_consistency
+    (brief gaps) — the concrete fix-list.
+  - The critic's `critique` + `nameable_decisions`, and the weakest rubric principles.
 
-Historically these lived nested in scores.json and the orchestrator had to dig
-them out by hand — and when it didn't, the generator got nothing and just
-re-emitted the previous page. This module extracts them deterministically and
-formats one markdown block to paste straight into the generator's edit prompt,
-so the feedback can never silently get dropped.
+Extracted deterministically so the feedback can never silently get dropped.
 
 Usage:
 
@@ -70,6 +71,16 @@ def build_feedback(candidate_dir: Path) -> str:
     missing = consistency.get("missing") or []
     contradictions = consistency.get("contradictions") or []
 
+    # Distinctiveness signals that should STEER the creative direction (not just be a fix):
+    # the slop-detector evidence (how AI-generated it reads, with the specific tells) and the
+    # brain_judge design classifier (how award-winning vs slop it looks). When either says the
+    # design reads generic, the creative moves must pull AWAY from AI-template conventions.
+    slop_ev = vj.get("ai_pitfalls_evidence") or {}
+    slop_score = slop_ev.get("score")          # 0-100, higher = more AI-generated
+    slop_reasons = slop_ev.get("reasons") or []
+    brain = (raw.get("brain_judge", {}) or {}).get("details", {}) or {}
+    p_good = brain.get("p_good")               # 0-1, P(looks award-winning vs slop)
+
     lines: list[str] = ["# Direction for the next version — make it more striking, then fix what's broken"]
     if combined is not None:
         lines.append(f"\nPrevious combined score: **{combined:.2f}/10**. The biggest wins come from "
@@ -95,6 +106,19 @@ def build_feedback(candidate_dir: Path) -> str:
         lines.append("Don't just patch defects — make a bold, tasteful design move that raises "
                      "creativity / originality / visual appeal (a signature motif, a more confident "
                      "hero, a distinctive type or color treatment, an editorial layout).")
+
+    # Fold the distinctiveness signals INTO the creative direction: when the design reads as
+    # AI-generated, the creative moves above must specifically break away from it.
+    if isinstance(slop_score, (int, float)) and slop_score >= 35:
+        lines.append(f"\n**This reads as AI-generated — slop score {slop_score:.0f}/100.** Steer the "
+                     "creative moves above to break away from generic no-code-builder conventions"
+                     + (" — specifically:" if slop_reasons else "."))
+        for r in slop_reasons[:4]:
+            lines.append(f"- move away from: {r}")
+    if isinstance(p_good, (int, float)) and p_good < 0.5:
+        lines.append(f"\nThe design classifier puts this at only **{p_good * 100:.0f}% award-winning "
+                     "vs AI-slop** — lean harder into distinctive, hand-crafted, polished choices "
+                     "(the perceptual fingerprint of considered design, not template output).")
 
     # ---- Secondary: visual refinements the judge flagged --------------------------------
     if issues:

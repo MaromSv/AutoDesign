@@ -284,6 +284,13 @@ def _build_prompt(brief: str, rubric: list[UXPrinciple], n_frames: int,
         "enough to build (name the element, the treatment, rough sizes/colors), but optimize for "
         "DISTINCTIVENESS and visual delight (creativity / originality / visual appeal), not "
         "correctness. Do NOT restate the issues here — explorations are upside, not fixes.",
+        "If the AUTOMATED SLOP ANALYSIS above reports a high slop score, any builder fingerprint, "
+        "or high similarity to AI layouts, then at least one exploration MUST directly counter it: "
+        "name the specific generic AI-generated pattern present (e.g. hero -> three feature cards -> "
+        "CTA, default Inter + indigo/purple gradient, centered everything, fade-up-and-stop motion, "
+        "stock-photo vibes) and propose a distinctive replacement that a no-code builder would never "
+        "emit. The higher the slop score, the more the explorations should pull AWAY from those "
+        "AI-template conventions toward something unmistakably hand-crafted.",
         "",
         "Respond with ONLY a single JSON object, no prose before or after, in this exact shape:",
         "{",
