@@ -57,20 +57,11 @@ colorfulness, whitespace, contrast, symmetry, hue-entropy — trained on **awwwa
 *looks* designed vs. templated, and plugs into the loop as a single `Signal`.
 [`pipeline/brain/`](pipeline/brain/).
 
-![slop-vs-masterpiece](docs/screenshots/slop_vs_masterpiece.png)
-
 ---
 
 ## The agent loop
 
-```
-brief ──> generator (sonnet) ──> capture (headless chromium, 5 frames)
-              ▲                              │
-              │                              ▼
-         critic (sonnet)  <──  signals  ──> scores.json
-              ▲                              │
-              └─── refinement plan ──────────┘
-```
+![loop](docs/screenshots/loop.png)
 
 - **One file owns behavior** — [`autodesign.md`](autodesign.md). YAML at the bottom
   drives the brief, model tiers, signal weights, focal bbox, and capture.
@@ -83,7 +74,6 @@ brief ──> generator (sonnet) ──> capture (headless chromium, 5 frames)
 - **Disk-as-contract.** Loop only writes to `.autodesign/runs/<id>/`. Dashboard
   only reads. They never share memory; runs are fully replayable.
 
-![loop](docs/screenshots/loop.png)
 
 ---
 
