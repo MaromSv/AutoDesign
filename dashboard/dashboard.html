@@ -3,69 +3,628 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AutoDesign — Dashboard (scaffold)</title>
+  <title>AutoDesign — evolution dashboard</title>
   <style>
-    /* Intentionally minimal. Real styling is a future pass. */
-    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
-    body { margin: 0; padding: 24px; max-width: 1200px; margin-inline: auto; }
-    header { display: flex; justify-content: space-between; align-items: baseline; }
-    h1 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
-    p.empty { opacity: 0.6; }
-    section { border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; padding: 16px; margin-top: 16px; }
-    .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+    :root {
+      color-scheme: dark;
+      --bg: #0e0f12;
+      --panel: #15171c;
+      --panel-2: #1b1e25;
+      --border: #2a2e38;
+      --text: #e8e8ea;
+      --muted: #8b8e96;
+      --accent: #e8b75e;
+      --good: #4ade80;
+      --warn: #f59e0b;
+      --bad:  #ef4444;
+      --font-ui: ui-sans-serif, system-ui, -apple-system, "Inter", sans-serif;
+      --font-mono: ui-monospace, "JetBrains Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 14px; line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* layout */
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(14,15,18,0.92); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px; display: flex; align-items: center; gap: 24px;
+    }
+    .topbar h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.01em; }
+    .topbar h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+    .topbar select {
+      background: var(--panel); color: var(--text);
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 10px; font-family: var(--font-mono); font-size: 12px;
+    }
+    .topbar .spacer { flex: 1; }
+    .topbar .meta { color: var(--muted); font-size: 12px; }
+
+    main { padding: 20px 24px 64px; max-width: 1500px; margin-inline: auto; }
+
+    section { margin-top: 22px; }
+    .label {
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); font-weight: 600; margin-bottom: 10px;
+    }
+
+    /* brief */
+    .brief {
+      padding: 16px 20px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--panel);
+      font-style: italic; color: var(--text);
+    }
+    .brief::before { content: "▍ "; color: var(--accent); font-style: normal; }
+
+    /* lineage chart */
+    .lineage {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px 20px;
+    }
+    .lineage svg { width: 100%; height: 180px; display: block; }
+    .lineage-axis { stroke: var(--border); stroke-width: 1; }
+    .lineage-line { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .lineage-area { fill: var(--accent); opacity: 0.12; }
+    .lineage-dot { fill: var(--accent); stroke: var(--bg); stroke-width: 2; cursor: pointer; }
+    .lineage-dot.winner { fill: var(--good); }
+    .lineage-label { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+    .lineage-value { font-family: var(--font-mono); font-size: 11px; fill: var(--text); font-weight: 600; }
+
+    /* sub-score grid */
+    .subscore-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-top: 12px;
+    }
+    .subscore-card {
+      padding: 12px 14px; background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 6px;
+    }
+    .subscore-card .label { margin-bottom: 6px; }
+    .subscore-card .vals {
+      display: flex; align-items: baseline; gap: 8px;
+      font-family: var(--font-mono);
+    }
+    .subscore-card .now { font-size: 18px; font-weight: 700; color: var(--text); }
+    .subscore-card .delta { font-size: 12px; }
+    .delta.pos { color: var(--good); }
+    .delta.neg { color: var(--bad); }
+    .delta.flat { color: var(--muted); }
+    .subscore-card .spark { margin-top: 8px; height: 28px; }
+
+    /* generation timeline */
+    .gen-tabs {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .gen-tab {
+      padding: 6px 14px; background: var(--panel); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 6px;
+      font-family: var(--font-mono); font-size: 12px;
+      cursor: pointer; user-select: none;
+    }
+    .gen-tab:hover { color: var(--text); border-color: var(--muted); }
+    .gen-tab.active { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+    .gen-tab .score { color: inherit; opacity: 0.75; margin-left: 8px; }
+
+    /* candidate grid */
+    .cand-grid {
+      display: grid; gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+    .cand {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      transition: border-color 120ms ease, transform 120ms ease;
+    }
+    .cand:hover { border-color: var(--muted); }
+    .cand.winner { border-color: var(--good); box-shadow: 0 0 0 1px rgba(74,222,128,0.25); }
+    .cand .preview {
+      position: relative; background: #000;
+      aspect-ratio: 1280 / 800; overflow: hidden; cursor: pointer;
+    }
+    .cand .preview img {
+      width: 100%; height: 100%; object-fit: cover; object-position: top;
+      transition: opacity 200ms ease;
+    }
+    .cand .preview img.overlay {
+      position: absolute; inset: 0; opacity: 0;
+    }
+    .cand.show-saliency .preview img.base { opacity: 0.25; }
+    .cand.show-saliency .preview img.overlay { opacity: 1; }
+    .cand .meta { padding: 12px 14px; }
+    .cand .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; margin-bottom: 8px;
+    }
+    .cand .name {
+      font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+    }
+    .cand .score-pill {
+      font-family: var(--font-mono); font-weight: 700; font-size: 16px;
+      padding: 2px 8px; border-radius: 4px; background: var(--panel-2);
+    }
+    .cand.winner .name::after { content: " · winner"; color: var(--good); }
+    .cand .hypothesis {
+      font-size: 12px; color: var(--muted); margin-bottom: 10px;
+      line-height: 1.45; min-height: 2.7em;
+    }
+    .cand .bars { display: flex; flex-direction: column; gap: 4px; }
+    .bar-row {
+      display: grid; grid-template-columns: 96px 1fr 36px;
+      align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+    }
+    .bar {
+      height: 4px; background: var(--panel-2); border-radius: 2px; overflow: hidden;
+    }
+    .bar > div { height: 100%; background: var(--accent); border-radius: 2px; }
+    .bar-val { text-align: right; color: var(--text); }
+
+    .cand .controls {
+      display: flex; gap: 6px; padding: 0 14px 12px;
+      font-family: var(--font-mono); font-size: 11px;
+    }
+    .cand .controls button {
+      flex: 1; padding: 6px 8px; background: var(--panel-2); color: var(--muted);
+      border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+      font-family: inherit; font-size: inherit;
+    }
+    .cand .controls button:hover { color: var(--text); }
+    .cand .controls button.active { color: var(--accent); border-color: var(--accent); }
+
+    /* lightbox */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,0.85); display: none; padding: 24px;
+    }
+    .lightbox.open { display: grid; grid-template-rows: auto 1fr; gap: 12px; }
+    .lightbox header {
+      display: flex; justify-content: space-between; align-items: center;
+      color: var(--text);
+    }
+    .lightbox header button {
+      background: var(--panel); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    }
+    .lightbox .stage { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+    .lightbox iframe, .lightbox img {
+      width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 6px;
+      background: white;
+    }
+    .lightbox iframe { background: white; }
+
+    /* critique panel */
+    .critique {
+      padding: 14px 18px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .critique p { margin: 0 0 8px; color: var(--text); }
+    .critique ul { margin: 6px 0 0 16px; padding: 0; color: var(--muted); }
+
+    .empty { color: var(--muted); padding: 24px; text-align: center; }
   </style>
 </head>
 <body>
+
+<div class="topbar">
+  <h1>AutoDesign <small>evolution dashboard</small></h1>
+  <select id="run-picker" title="run id"></select>
+  <div class="spacer"></div>
+  <div class="meta" id="meta"></div>
+</div>
+
+<main id="main">
+  <p class="empty">Loading…</p>
+</main>
+
+<div class="lightbox" id="lightbox">
   <header>
-    <h1>AutoDesign</h1>
-    <span class="label">scaffold — empty state</span>
+    <strong id="lightbox-title"></strong>
+    <button id="lightbox-close">close (esc)</button>
   </header>
+  <div class="stage">
+    <iframe id="lightbox-iframe" sandbox="allow-same-origin"></iframe>
+    <img id="lightbox-overlay" alt="saliency overlay" />
+  </div>
+</div>
 
-  <!-- TODO: timeline slot — render one tile per generation from manifest.generations -->
-  <section id="timeline">
-    <div class="label">timeline</div>
-    <p class="empty">No runs yet.</p>
-  </section>
+<script>
+const SUB_KEYS = ["hero_pull", "focal_dominance", "composition_spread", "scan_rhythm"];
+const SUB_LABEL = {
+  hero_pull: "hero pull",
+  focal_dominance: "focal dom.",
+  composition_spread: "spread",
+  scan_rhythm: "scan rhythm",
+};
 
-  <!-- TODO: stage slot — iframe the currently selected generation's html -->
-  <section id="stage">
-    <div class="label">stage</div>
-    <p class="empty">Select a generation to render.</p>
-  </section>
+let CURRENT_RUN = null;
+let CURRENT_MANIFEST = null;
+let ACTIVE_GEN = 0;
 
-  <!-- TODO: score panel — per_criterion bars + combined number -->
-  <section id="scores">
-    <div class="label">scores</div>
-    <p class="empty">No scores available.</p>
-  </section>
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url} ${r.status}`);
+  return r.json();
+}
 
-  <!-- TODO: critique panel — markdown-ish render of critique + nameable_decisions -->
-  <section id="critique">
-    <div class="label">critique</div>
-    <p class="empty">No critique available.</p>
-  </section>
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v;
+      else if (k === "on") for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn);
+      else if (k === "html") e.innerHTML = v;
+      else if (v !== null && v !== undefined) e.setAttribute(k, v);
+    }
+  }
+  for (const k of kids) {
+    if (k == null) continue;
+    e.append(typeof k === "string" ? document.createTextNode(k) : k);
+  }
+  return e;
+}
 
-  <script>
-    // Only contract this client relies on:
-    //   GET /api/runs        -> { runs: [<id>...] }
-    //   GET /api/run/<id>    -> { run, generations: [...] }
-    // Anything beyond this is implementation detail of the engine.
-    (async () => {
-      try {
-        const r = await fetch("/api/runs");
-        const { runs = [] } = await r.json();
-        const timeline = document.querySelector("#timeline p.empty");
-        if (runs.length === 0) {
-          timeline.textContent = "No runs yet. Trigger /autodesign to create one.";
-          return;
-        }
-        // TODO: render run list + load the newest run via /api/run/<id>.
-        timeline.textContent = `Found ${runs.length} run(s). Rendering TBD.`;
-      } catch (err) {
-        document.querySelector("#timeline p.empty").textContent =
-          "Manifest API unreachable. Is dashboard/serve.py running?";
-      }
-    })();
-  </script>
+function fmt(x, d = 2) {
+  if (x == null) return "—";
+  if (typeof x !== "number") return String(x);
+  return x.toFixed(d);
+}
+
+function winnerOfGen(gen) {
+  return gen.candidates.find(c => c.id === gen.winner) || gen.candidates[0];
+}
+
+function lineageSeries(manifest) {
+  // Per-generation winner subscores (for the headline chart and sparklines).
+  const rows = manifest.generations.map(g => {
+    const w = winnerOfGen(g);
+    const sub = (w && w.subscores && w.subscores.saliency) || {};
+    return {
+      gen: g.id,
+      combined: w ? w.combined : null,
+      hero_pull: sub.hero_pull ?? null,
+      focal_dominance: sub.focal_dominance ?? null,
+      composition_spread: sub.composition_spread ?? null,
+      scan_rhythm: sub.scan_rhythm ?? null,
+    };
+  });
+  return rows;
+}
+
+function renderLineageChart(rows) {
+  // Combined-score chart across generations. SVG, no deps.
+  const w = 1000, h = 180, pad = { l: 40, r: 20, t: 16, b: 28 };
+  const xs = rows.map((_, i) => pad.l + (i * (w - pad.l - pad.r)) / Math.max(rows.length - 1, 1));
+  const maxY = 10;
+  const ys = rows.map(r => pad.t + (h - pad.t - pad.b) * (1 - (r.combined ?? 0) / maxY));
+  const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+  const area = `${pad.l},${h - pad.b} ${pts} ${xs[xs.length - 1]},${h - pad.b}`;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  // y grid
+  for (let v = 0; v <= 10; v += 2) {
+    const y = pad.t + (h - pad.t - pad.b) * (1 - v / maxY);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", pad.l); line.setAttribute("x2", w - pad.r);
+    line.setAttribute("y1", y); line.setAttribute("y2", y);
+    line.setAttribute("class", "lineage-axis");
+    line.setAttribute("stroke-dasharray", v === 0 ? "" : "2 4");
+    svg.appendChild(line);
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", pad.l - 6); t.setAttribute("y", y + 4);
+    t.setAttribute("text-anchor", "end"); t.setAttribute("class", "lineage-label");
+    t.textContent = String(v);
+    svg.appendChild(t);
+  }
+
+  // area + line
+  const ar = document.createElementNS(svgNS, "polygon");
+  ar.setAttribute("points", area); ar.setAttribute("class", "lineage-area");
+  svg.appendChild(ar);
+  const ln = document.createElementNS(svgNS, "polyline");
+  ln.setAttribute("points", pts); ln.setAttribute("class", "lineage-line");
+  svg.appendChild(ln);
+
+  // dots + labels
+  rows.forEach((r, i) => {
+    const dot = document.createElementNS(svgNS, "circle");
+    dot.setAttribute("cx", xs[i]); dot.setAttribute("cy", ys[i]);
+    dot.setAttribute("r", 6);
+    dot.setAttribute("class", `lineage-dot ${i === bestGenIdx(rows) ? "winner" : ""}`);
+    dot.addEventListener("click", () => activateGen(i));
+    svg.appendChild(dot);
+
+    const t = document.createElementNS(svgNS, "text");
+    t.setAttribute("x", xs[i]); t.setAttribute("y", h - 10);
+    t.setAttribute("text-anchor", "middle"); t.setAttribute("class", "lineage-label");
+    t.textContent = r.gen;
+    svg.appendChild(t);
+
+    const v = document.createElementNS(svgNS, "text");
+    v.setAttribute("x", xs[i]); v.setAttribute("y", ys[i] - 12);
+    v.setAttribute("text-anchor", "middle"); v.setAttribute("class", "lineage-value");
+    v.textContent = r.combined != null ? r.combined.toFixed(2) : "—";
+    svg.appendChild(v);
+  });
+  return svg;
+}
+
+function bestGenIdx(rows) {
+  let bi = 0, bv = -Infinity;
+  rows.forEach((r, i) => { if ((r.combined ?? -Infinity) > bv) { bv = r.combined ?? -Infinity; bi = i; } });
+  return bi;
+}
+
+function spark(values, w = 100, h = 28) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.style.width = "100%"; svg.style.height = `${h}px`;
+  const clean = values.map(v => (v == null ? null : Math.max(0, Math.min(1, v))));
+  const xs = clean.map((_, i) => (i * w) / Math.max(clean.length - 1, 1));
+  const ys = clean.map(v => h - 4 - (v == null ? 0 : v * (h - 8)));
+  const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
+  const ar = document.createElementNS(svgNS, "polygon");
+  ar.setAttribute("points", `0,${h} ${pts} ${w},${h}`);
+  ar.setAttribute("fill", "var(--accent)"); ar.setAttribute("opacity", "0.18");
+  svg.appendChild(ar);
+  const ln = document.createElementNS(svgNS, "polyline");
+  ln.setAttribute("points", pts); ln.setAttribute("fill", "none");
+  ln.setAttribute("stroke", "var(--accent)"); ln.setAttribute("stroke-width", "1.5");
+  svg.appendChild(ln);
+  clean.forEach((v, i) => {
+    const c = document.createElementNS(svgNS, "circle");
+    c.setAttribute("cx", xs[i]); c.setAttribute("cy", ys[i]);
+    c.setAttribute("r", 2); c.setAttribute("fill", "var(--accent)");
+    svg.appendChild(c);
+  });
+  return svg;
+}
+
+function renderSubscoreGrid(rows) {
+  const grid = el("div", { class: "subscore-grid" });
+  for (const key of SUB_KEYS) {
+    const series = rows.map(r => r[key]);
+    const cur = series[series.length - 1];
+    const prev = series.length > 1 ? series[series.length - 2] : null;
+    const delta = (cur != null && prev != null) ? (cur - prev) : null;
+    const dcls = delta == null ? "flat" : (Math.abs(delta) < 0.005 ? "flat" : (delta > 0 ? "pos" : "neg"));
+    const dtext = delta == null ? "" :
+      (Math.abs(delta) < 0.005 ? "±0.00" :
+        (delta > 0 ? `+${delta.toFixed(3)}` : delta.toFixed(3)));
+    const card = el("div", { class: "subscore-card" },
+      el("div", { class: "label" }, SUB_LABEL[key]),
+      el("div", { class: "vals" },
+        el("span", { class: "now" }, cur != null ? cur.toFixed(2) : "—"),
+        el("span", { class: `delta ${dcls}` }, dtext),
+      ),
+    );
+    const sparkBox = el("div", { class: "spark" });
+    sparkBox.appendChild(spark(series));
+    card.appendChild(sparkBox);
+    grid.appendChild(card);
+  }
+  return grid;
+}
+
+function renderGenTabs(manifest) {
+  const tabs = el("div", { class: "gen-tabs" });
+  manifest.generations.forEach((g, i) => {
+    const w = winnerOfGen(g);
+    const score = w && w.combined != null ? w.combined.toFixed(2) : "—";
+    const tab = el("div",
+      {
+        class: `gen-tab ${i === ACTIVE_GEN ? "active" : ""}`,
+        on: { click: () => activateGen(i) },
+      },
+      g.id, el("span", { class: "score" }, score),
+    );
+    tabs.appendChild(tab);
+  });
+  return tabs;
+}
+
+function renderCandidate(cand, winnerName) {
+  const isWinner = cand.id === winnerName;
+  const sub = (cand.subscores && cand.subscores.saliency) || {};
+
+  // bars (per-criterion, 0-10)
+  const bars = el("div", { class: "bars" });
+  for (const [k, v] of Object.entries(cand.per_criterion || {})) {
+    const pct = v == null ? 0 : Math.max(0, Math.min(1, v / 10)) * 100;
+    bars.appendChild(el("div", { class: "bar-row" },
+      el("span", null, k),
+      el("div", { class: "bar" }, el("div", { style: `width:${pct.toFixed(1)}%` })),
+      el("span", { class: "bar-val" }, v == null ? "—" : v.toFixed(2)),
+    ));
+  }
+  // subscores too (0-1)
+  for (const k of SUB_KEYS) {
+    const v = sub[k];
+    if (v == null) continue;
+    const pct = Math.max(0, Math.min(1, v)) * 100;
+    bars.appendChild(el("div", { class: "bar-row" },
+      el("span", null, SUB_LABEL[k]),
+      el("div", { class: "bar" }, el("div", { style: `width:${pct.toFixed(1)}%` })),
+      el("span", { class: "bar-val" }, v.toFixed(2)),
+    ));
+  }
+
+  const card = el("div", { class: `cand ${isWinner ? "winner" : ""}` });
+
+  // preview with both images stacked
+  const preview = el("div", { class: "preview", on: { click: () => openLightbox(cand) } });
+  if (cand.frames && cand.frames.length) {
+    preview.appendChild(el("img", { class: "base", src: cand.frames[0], alt: cand.id }));
+  } else {
+    preview.appendChild(el("div", { class: "empty", style: "padding:60px 0;color:var(--muted)" }, "no frame"));
+  }
+  if (cand.saliency) {
+    preview.appendChild(el("img", { class: "overlay", src: cand.saliency, alt: "saliency" }));
+  }
+  card.appendChild(preview);
+
+  // meta block
+  const combined = cand.combined != null ? cand.combined.toFixed(2) : "—";
+  const meta = el("div", { class: "meta" },
+    el("div", { class: "row" },
+      el("span", { class: "name" }, cand.id),
+      el("span", { class: "score-pill" }, combined),
+    ),
+    el("div", { class: "hypothesis" }, cand.hypothesis ? "hypothesis: " + cand.hypothesis : ""),
+    bars,
+  );
+  card.appendChild(meta);
+
+  // controls: toggle saliency, open in lightbox
+  const toggleSaliency = el("button", { type: "button" }, "saliency overlay");
+  if (!cand.saliency) toggleSaliency.disabled = true;
+  toggleSaliency.addEventListener("click", e => {
+    e.stopPropagation();
+    card.classList.toggle("show-saliency");
+    toggleSaliency.classList.toggle("active");
+  });
+  const openBtn = el("button", { type: "button", on: { click: e => { e.stopPropagation(); openLightbox(cand); } } }, "open ↗");
+  card.appendChild(el("div", { class: "controls" }, toggleSaliency, openBtn));
+
+  return card;
+}
+
+function activateGen(i) {
+  ACTIVE_GEN = i;
+  renderActiveGen();
+}
+
+function renderCritiqueFor(gen) {
+  // We surface the lineage's `answered_critique` and `changed` field for this gen.
+  const lin = (CURRENT_MANIFEST.lineage || []).find(r => `gen-${String(r.generation).padStart(3, "0")}` === gen.id);
+  if (!lin) return null;
+  const parts = [];
+  if (lin.answered_critique) parts.push(el("p", null, "critique: " + lin.answered_critique));
+  if (lin.changed) parts.push(el("p", null, "changed: " + lin.changed));
+  if (parts.length === 0) return null;
+  return el("section", null,
+    el("div", { class: "label" }, "what this generation answered"),
+    el("div", { class: "critique" }, ...parts),
+  );
+}
+
+function renderActiveGen() {
+  const gen = CURRENT_MANIFEST.generations[ACTIVE_GEN];
+  const wrap = document.getElementById("active-gen");
+  wrap.innerHTML = "";
+  wrap.appendChild(el("div", { class: "label" }, `${gen.id} · ${gen.candidates.length} candidate${gen.candidates.length === 1 ? "" : "s"}${gen.winner ? " · winner " + gen.winner : ""}`));
+  const grid = el("div", { class: "cand-grid" });
+  for (const c of gen.candidates) grid.appendChild(renderCandidate(c, gen.winner));
+  wrap.appendChild(grid);
+  const critique = renderCritiqueFor(gen);
+  if (critique) wrap.appendChild(critique);
+
+  // re-render tabs to update active state
+  const tabHost = document.getElementById("gen-tabs-host");
+  tabHost.innerHTML = "";
+  tabHost.appendChild(renderGenTabs(CURRENT_MANIFEST));
+}
+
+function renderRun(manifest) {
+  CURRENT_MANIFEST = manifest;
+  ACTIVE_GEN = bestGenIdx(lineageSeries(manifest));
+
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  if (manifest.brief) {
+    main.appendChild(el("section", null,
+      el("div", { class: "label" }, "brief"),
+      el("div", { class: "brief" }, manifest.brief),
+    ));
+  }
+
+  const rows = lineageSeries(manifest);
+  const lineageSec = el("section", null,
+    el("div", { class: "label" }, "evolution · combined saliency score (0-10)"),
+    el("div", { class: "lineage" }),
+  );
+  lineageSec.querySelector(".lineage").appendChild(renderLineageChart(rows));
+  main.appendChild(lineageSec);
+
+  main.appendChild(el("section", null,
+    el("div", { class: "label" }, "sub-score evolution"),
+    renderSubscoreGrid(rows),
+  ));
+
+  main.appendChild(el("section", { id: "gen-tabs-host" }));
+  main.appendChild(el("section", { id: "active-gen" }));
+
+  if (manifest.final) {
+    main.appendChild(el("section", null,
+      el("div", { class: "label" }, "final"),
+      el("div", { class: "brief" },
+        el("a", { href: manifest.final, target: "_blank" }, "open final.html ↗"),
+      ),
+    ));
+  }
+
+  // meta
+  const best = rows[bestGenIdx(rows)];
+  document.getElementById("meta").textContent =
+    `${manifest.generations.length} gens · best ${best.gen} ${(best.combined ?? 0).toFixed(2)}`;
+
+  renderActiveGen();
+}
+
+function openLightbox(cand) {
+  const box = document.getElementById("lightbox");
+  document.getElementById("lightbox-title").textContent = `${cand.id} · combined ${fmt(cand.combined)}`;
+  const iframe = document.getElementById("lightbox-iframe");
+  const overlay = document.getElementById("lightbox-overlay");
+  iframe.src = cand.html || "about:blank";
+  overlay.src = cand.saliency || cand.frames?.[0] || "";
+  box.classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+  document.getElementById("lightbox-iframe").src = "about:blank";
+}
+document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLightbox(); });
+
+async function boot() {
+  const { runs = [] } = await jget("/api/runs");
+  const picker = document.getElementById("run-picker");
+  if (runs.length === 0) {
+    document.getElementById("main").innerHTML =
+      `<p class="empty">No runs yet. Trigger <code>/autodesign &lt;brief&gt;</code> from chat.</p>`;
+    return;
+  }
+  picker.innerHTML = "";
+  for (const r of runs) picker.appendChild(el("option", { value: r }, r));
+  picker.value = runs[0];
+  picker.addEventListener("change", () => loadRun(picker.value));
+  await loadRun(picker.value);
+}
+
+async function loadRun(rid) {
+  CURRENT_RUN = rid;
+  const manifest = await jget(`/api/run/${rid}`);
+  renderRun(manifest);
+}
+
+boot().catch(err => {
+  document.getElementById("main").innerHTML =
+    `<p class="empty">Failed to load: ${err.message}. Is dashboard/serve.py running?</p>`;
+});
+</script>
 </body>
 </html>

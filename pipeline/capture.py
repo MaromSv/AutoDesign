@@ -1,10 +1,12 @@
 """Render a candidate HTML page to screenshots.
 
-The real implementation will drive a headless browser (Playwright) at a configured
-viewport, capture a screenshot at rest plus a handful of keyframes through any
-declared animation, and write them as PNGs into `out_dir/frames/`.
+Drives a headless Chromium (Playwright) at the configured viewport, captures
+the at-rest above-the-fold view, and writes it as a PNG into `out_dir/frames/`.
 
-This module is a stub. The signature is the contract — fill in the body later.
+Animation keyframes are accepted as a parameter for API stability but not yet
+sampled — the current implementation captures only the at-rest frame.
+TODO: drive `page.evaluate("document.timeline.currentTime = ...")` to sample
+keyframes through any declared animation.
 """
 
 from __future__ import annotations
@@ -33,26 +35,55 @@ def capture(
     """Render `html_path` and screenshot it into `out_dir/frames/`.
 
     Args:
-        html_path: file:// URL or local path to the candidate HTML.
-        out_dir: generation directory; frames are written under `out_dir/frames/`.
+        html_path: local path to the candidate HTML.
+        out_dir: candidate directory; frames are written under `out_dir/frames/`.
         viewport: (width, height) in CSS pixels.
-        animation_seconds: total animation length to sample over.
-        keyframes: fractional timestamps in [0.0, 1.0] to screenshot.
+        animation_seconds: total animation length (currently unused, see TODO above).
+        keyframes: fractional timestamps in [0, 1] (currently unused, see TODO above).
 
     Returns:
-        A `CaptureResult` listing the frames written.
-
-    TODO: implement with Playwright — launch chromium, set viewport, navigate to
-    the html, wait for `load` and any web fonts, screenshot at t=0, then advance
-    the page time for each keyframe and screenshot again. Write PNGs as
-    `0000.png`, `0001.png`, ... in `out_dir/frames/`. Until then, return an
-    empty `CaptureResult` so callers can plumb the data flow end-to-end.
+        `CaptureResult` listing the frames written. `skipped` is set if capture
+        could not run (missing dependency, no html, etc.) — the loop tolerates
+        skipped captures and downstream signals can still produce useful judgments.
     """
-    _ = (html_path, viewport, animation_seconds, keyframes)
+    _ = (animation_seconds, keyframes)
     frames_dir = Path(out_dir) / "frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+
+    html_path = Path(html_path)
+    if not html_path.exists():
+        return CaptureResult(
+            frames_dir=frames_dir, frames=[], viewport=viewport,
+            skipped=f"html missing: {html_path}",
+        )
+
+    try:
+        from playwright.sync_api import sync_playwright  # local import: optional dep
+    except ImportError as e:
+        return CaptureResult(
+            frames_dir=frames_dir, frames=[], viewport=viewport,
+            skipped=f"playwright not installed: {e}",
+        )
+
+    out_png = frames_dir / "0000.png"
+    url = html_path.resolve().as_uri()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            ctx = browser.new_context(
+                viewport={"width": viewport[0], "height": viewport[1]},
+                device_scale_factor=1,
+            )
+            page = ctx.new_page()
+            page.goto(url, wait_until="networkidle")
+            page.screenshot(path=str(out_png), full_page=False)
+            browser.close()
+    except Exception as e:
+        return CaptureResult(
+            frames_dir=frames_dir, frames=[], viewport=viewport,
+            skipped=f"playwright error: {e}",
+        )
+
     return CaptureResult(
-        frames_dir=frames_dir,
-        frames=[],
-        viewport=viewport,
-        skipped="not implemented",
+        frames_dir=frames_dir, frames=[out_png], viewport=viewport, skipped=None,
     )

@@ -93,11 +93,29 @@ def _list_frames(gen_dir: Path) -> list[str]:
     return sorted(u for u in urls if u is not None)
 
 
+def _extract_hypothesis(html_path: Path) -> str | None:
+    """Pull the leading `<!-- hypothesis: ... -->` (or first HTML comment) from an html file."""
+    try:
+        text = html_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    import re
+    m = re.search(r"<!--\s*(.*?)\s*-->", text, re.DOTALL)
+    return m.group(1).strip() if m else None
+
+
 def _candidate_manifest(cand_path: Path) -> dict:
     """One candidate entry in the per-generation `candidates` list."""
     scores = _read_json(cand_path / SCORES_FILENAME) or {}
     html = cand_path / HTML_FILENAME
     saliency = cand_path / SALIENCY_FILENAME
+    raw = scores.get("raw", {})
+    # Surface subscores directly so the dashboard does not have to dig.
+    subscores = {}
+    for key, payload in raw.items():
+        sub = (payload.get("details") or {}).get("subscores")
+        if sub:
+            subscores[key] = sub
     return {
         "id": cand_path.name,
         "html": _url_for(html) if html.exists() else None,
@@ -105,9 +123,30 @@ def _candidate_manifest(cand_path: Path) -> dict:
         "saliency": _url_for(saliency) if saliency.exists() else None,
         "combined": scores.get("combined"),
         "per_criterion": scores.get("per_criterion", {}),
+        "subscores": subscores,
+        "details": raw,
+        "hypothesis": _extract_hypothesis(html) if html.exists() else None,
         "critique": scores.get("critique", ""),
         "nameable_decisions": scores.get("nameable_decisions", []),
     }
+
+
+def _read_lineage(run_dir: Path) -> list[dict]:
+    """Parse lineage.jsonl into a list of generation records, ordered by `generation`."""
+    p = run_dir / LINEAGE_FILENAME
+    if not p.exists():
+        return []
+    out: list[dict] = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    out.sort(key=lambda r: r.get("generation", 0))
+    return out
 
 
 def build_run_manifest(run_id: str, runs_root: Path = RUNS_ROOT) -> dict | None:
@@ -133,11 +172,23 @@ def build_run_manifest(run_id: str, runs_root: Path = RUNS_ROOT) -> dict | None:
         generations.append({
             "id": gen_path.name,
             "winner": winner_obj.get("winner"),
+            "winner_combined": winner_obj.get("combined"),
             "candidates": candidates,
         })
 
-    _ = LINEAGE_FILENAME  # TODO: surface lineage entries when the loop writes them.
-    return {"run": run_id, "generations": generations}
+    lineage = _read_lineage(run_dir)
+    brief_path = run_dir / "brief.txt"
+    brief = brief_path.read_text(encoding="utf-8").strip() if brief_path.exists() else ""
+    final_path = run_dir / "final.html"
+    final_url = _url_for(final_path) if final_path.exists() else None
+
+    return {
+        "run": run_id,
+        "brief": brief,
+        "lineage": lineage,
+        "final": final_url,
+        "generations": generations,
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
