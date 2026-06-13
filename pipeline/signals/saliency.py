@@ -646,27 +646,29 @@ def _save_overlay(
     bbox: tuple[float, float, float, float] | None = None,
     first_fix: tuple[float, float] | None = None,
 ) -> None:
-    """Heatmap-over-image PNG — clean inferno blend, no annotations.
+    """Heat-only RGBA PNG — transparent everywhere except where attention lands.
 
-    The bbox and first-fixation are deliberately NOT drawn here: the
-    dashboard renders the inferno heatmap on top of the actual page render,
-    and overlaying a bbox rectangle on it just looks like UI debris. If a
-    diagnostic view is needed, bbox + fixation are still emitted in
-    `details` and can be drawn as a separate dashboard SVG layer."""
-    _ = (bbox, first_fix)  # kept in signature for backwards-compatible callers
+    The PNG carries no baked-in page pixels. Alpha is driven by the
+    normalized density itself: cold regions are fully transparent so the
+    dashboard's live iframe shows through, hot regions are opaque inferno
+    color. This is what lets the dashboard overlay the heatmap on the
+    candidate's running animation without darkening the rest of the page."""
+    _ = (image, bbox, first_fix)  # image kept in signature for backwards-compatible callers
     sm = gaussian_filter(density, sigma=8)
     sm = (sm - sm.min()) / (sm.max() - sm.min() + 1e-12)
-    base = image.astype(np.float32) / 255.0
     import matplotlib.cm as cm
 
-    heat_rgba = cm.inferno(sm)
-    heat_rgb = heat_rgba[..., :3]
-    alpha = 0.55
-    blended = (1 - alpha) * base + alpha * heat_rgb
-    blended = (np.clip(blended, 0, 1) * 255).astype(np.uint8)
+    heat_rgb = cm.inferno(sm)[..., :3]
+    h, w = sm.shape
+    rgba = np.zeros((h, w, 4), dtype=np.float32)
+    rgba[..., :3] = heat_rgb
+    # Alpha = saliency density itself → smooth fade from transparent cold
+    # to opaque hot. No hard threshold; the heatmap fades in naturally.
+    rgba[..., 3] = sm
+    rgba = (np.clip(rgba, 0, 1) * 255).astype(np.uint8)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(blended).save(out_path)
+    Image.fromarray(rgba, mode="RGBA").save(out_path)
 
 
 @register_signal
@@ -718,6 +720,14 @@ class SaliencySignal:
             # Overlay failure is non-fatal — the score is still valid.
             pass
 
+        # Normalized scanpath: each fixation as (x, y) in [0, 1], relative to
+        # the (resized) frame image. The dashboard stretches the saliency PNG
+        # to fit the stage, so these normalized coords land at the right spot
+        # on the live preview too. Order = predicted fixation 1 → 2 → … → N.
+        scanpath_norm = [
+            [round(fx / w, 4), round(fy / h, 4)] for fx, fy in scanpath
+        ]
+
         # SignalResult.score is on a 0-10 scale; the rubric produces 0-100.
         return SignalResult(
             score=subscores["total"] / 10.0,
@@ -726,5 +736,6 @@ class SaliencySignal:
                 "weights": weights_out,
                 "explanations": explanations,
                 "metrics": asdict(metrics),
+                "scanpath_norm": scanpath_norm,
             },
         )

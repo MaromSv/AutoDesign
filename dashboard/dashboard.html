@@ -150,8 +150,44 @@
     }
     .stage .layer.active { opacity: 1; }
     /* Saliency layer rides on top of the iframe so the animation plays
-       underneath while the heatmap stays visible the whole time. */
-    .stage .saliency-layer { mix-blend-mode: multiply; z-index: 2; }
+       underneath while the heatmap stays visible the whole time.
+       `lighten` keeps cold regions of the heatmap from darkening the
+       iframe — only the hot inferno colors win over the page underneath.
+       (For runs whose saliency.png is the newer heat-only RGBA, the PNG's
+       alpha channel makes cold regions transparent anyway, so `lighten`
+       still does the right thing.) */
+    .stage .saliency-layer { mix-blend-mode: lighten; z-index: 2; }
+
+    /* Scanpath layer: numbered fixation order over the stage, drawn from
+       saliency.details.scanpath_norm. Toggled together with the heatmap. */
+    .stage .scanpath-layer {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0; transition: opacity 220ms ease;
+      z-index: 3;
+    }
+    .stage .scanpath-layer.active { opacity: 1; }
+    .stage .scanpath-layer svg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    .stage .scanpath-layer .sp-line {
+      stroke: var(--accent); stroke-width: 2;
+      fill: none; opacity: 0.9;
+      /* Subtle white halo so the path reads on both dark and light pages */
+      filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.85));
+    }
+    .stage .scanpath-layer .sp-dot {
+      position: absolute; width: 22px; height: 22px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%; background: #fff; border: 2px solid var(--accent);
+      display: grid; place-items: center;
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      color: var(--ink);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    }
+    .stage .scanpath-layer .sp-dot.first {
+      background: var(--accent); color: #fff; border-color: #fff;
+    }
     .stage .frame-layer {
       position: absolute; top: 0; left: 0;
       width: 1280px; height: 800px;
@@ -484,7 +520,8 @@ const STATE = {
   // it only flips when the user clicks the toggle again.
   showSaliency: false,
   playTimer: null,          // interval id for auto-cycle through siblings
-  stageSal: null,           // saliency layer
+  stageSal: null,           // saliency layer (heatmap PNG)
+  stagePath: null,          // scanpath layer (1→2→…→N fixation order)
   stageFrame: null,         // live iframe layer showing the candidate's actual HTML
   stageRO: null,            // ResizeObserver to keep the iframe scale matched to the stage box
 };
@@ -614,8 +651,10 @@ function buildStageShell(gen) {
     title: "candidate preview",
   });
   STATE.stageSal = el("img", { class: "layer saliency-layer", alt: "saliency overlay" });
+  STATE.stagePath = el("div", { class: "scanpath-layer", "aria-label": "predicted fixation order" });
   stage.appendChild(STATE.stageFrame);
   stage.appendChild(STATE.stageSal);
+  stage.appendChild(STATE.stagePath);
 
   if (STATE.stageRO) { STATE.stageRO.disconnect(); }
   STATE.stageRO = new ResizeObserver(entries => {
@@ -670,7 +709,7 @@ function buildStageShell(gen) {
   bar.appendChild(el("div", { class: "spacer" }));
 
   if (gen.candidates.some(c => c.saliency)) {
-    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze saliency heatmap over the running animation" },
+    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze heatmap + 1→2→…→N predicted gaze path" },
       el("span", null, "saliency"),
       el("span", { class: "label-no" }, "no"),
       el("div", { class: "switch" }),
@@ -730,20 +769,66 @@ function paintStage(gen, animate = true) {
   }
 }
 
-/* Update only the saliency overlay layer. Does NOT touch the iframe so
-   we never restart a running animation just to flip the heatmap on/off. */
+/* Update the saliency overlay layer + the 1→2→…→N scanpath layer.
+   Does NOT touch the iframe so we never restart a running animation
+   just to flip the heatmap on/off. */
 function paintSaliency() {
   const cand = currentCand();
-  if (!STATE.stageSal) return;
-  if (cand?.saliency) {
-    if (STATE.stageSal.getAttribute("src") !== cand.saliency) {
-      STATE.stageSal.src = cand.saliency;
+  // --- heatmap layer
+  if (STATE.stageSal) {
+    if (cand?.saliency) {
+      if (STATE.stageSal.getAttribute("src") !== cand.saliency) {
+        STATE.stageSal.src = cand.saliency;
+      }
+      STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
+    } else {
+      STATE.stageSal.classList.remove("active");
+      STATE.stageSal.removeAttribute("src");
     }
-    STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
-  } else {
-    STATE.stageSal.classList.remove("active");
-    STATE.stageSal.removeAttribute("src");
   }
+  // --- scanpath layer (numbered fixation order)
+  renderScanpath(cand);
+}
+
+/* Draw the predicted gaze path as numbered dots connected by a dashed
+   line. Coords come from saliency.details.scanpath_norm — each entry is
+   [x, y] in [0, 1] relative to the scored frame. Missing data (older
+   runs that pre-date the scanpath_norm field) → empty layer, the heatmap
+   alone still shows. Visibility tracks STATE.showSaliency. */
+function renderScanpath(cand) {
+  const layer = STATE.stagePath;
+  if (!layer) return;
+  const path = cand?.details?.saliency?.details?.scanpath_norm;
+  layer.innerHTML = "";
+  if (!path || !path.length) {
+    layer.classList.remove("active");
+    return;
+  }
+  // Connecting saccade polyline. percent coords inside a 0–100 viewBox so
+  // it stretches with the stage exactly the way the heatmap does.
+  const pts = path.map(([x, y]) => `${(x * 100).toFixed(2)},${(y * 100).toFixed(2)}`).join(" ");
+  const svgNs = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNs, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  const line = document.createElementNS(svgNs, "polyline");
+  line.setAttribute("points", pts);
+  line.setAttribute("class", "sp-line");
+  // viewBox is non-square stretched, so the dash pattern stays
+  // visually consistent if we use a small absolute width.
+  line.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.appendChild(line);
+  layer.appendChild(svg);
+  // Numbered dots on top of the line.
+  path.forEach(([x, y], i) => {
+    const dot = el("div", {
+      class: `sp-dot ${i === 0 ? "first" : ""}`,
+      style: `left:${(x * 100).toFixed(2)}%;top:${(y * 100).toFixed(2)}%`,
+      title: `fixation ${i + 1}`,
+    }, String(i + 1));
+    layer.appendChild(dot);
+  });
+  layer.classList.toggle("active", !!STATE.showSaliency);
 }
 
 function paintInfo(gen) {
