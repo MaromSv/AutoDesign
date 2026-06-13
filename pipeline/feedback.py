@@ -51,29 +51,54 @@ def build_feedback(candidate_dir: Path) -> str:
 
     raw = scores.get("raw", {}) or {}
     vj = (raw.get("vlm_judge", {}) or {}).get("details", {}) or {}
-    issues = vj.get("issues") or []
+    explorations = vj.get("explorations") or []   # creative design moves to TRY
+    issues = vj.get("issues") or []               # visual things the judge saw to refine
     judge_critique = vj.get("critique", "")
     critic_critique = scores.get("critique", "")
     decisions = scores.get("nameable_decisions") or []
     lowlights = _per_principle_lowlights(vj.get("per_principle") or {})
     combined = scores.get("combined")
 
-    # The two Nemotron signals find concrete, fixable defects the VLM judge can't see:
-    # broken/dead interactions (stress_test) and brief requirements missing from the build
-    # (prompt_consistency). Fold them in so the next round actually fixes them.
+    # The non-visual signals find concrete, fixable defects the VLM judge isn't focused on:
+    # off-target attention (saliency), broken/dead interactions (stress_test), and brief
+    # requirements missing from the build (prompt_consistency). These are the "fix" list.
+    saliency = (raw.get("saliency", {}) or {}).get("details", {}) or {}
+    attention_fixes = _saliency_lowlights(saliency)
     stress = (raw.get("stress_test", {}) or {}).get("details", {}) or {}
     stress_issues = stress.get("issues") or []
     consistency = (raw.get("prompt_consistency", {}) or {}).get("details", {}) or {}
     missing = consistency.get("missing") or []
     contradictions = consistency.get("contradictions") or []
 
-    lines: list[str] = ["# Feedback on the previous winner — fix these, do not start over"]
+    lines: list[str] = ["# Direction for the next version — make it more striking, then fix what's broken"]
     if combined is not None:
-        lines.append(f"\nPrevious combined score: **{combined:.2f}/10**. Your job is to raise it by "
-                     "fixing the specific problems below, while keeping what already works.")
+        lines.append(f"\nPrevious combined score: **{combined:.2f}/10**. The biggest wins come from "
+                     "design ambition, not just patching defects — lead with the creative direction "
+                     "below, then clean up the fixes. Keep what already works.")
 
+    # ---- PRIORITY: creative design direction from the VLM judge -------------------------
+    if explorations:
+        lines.append("\n## Design direction — bold creative moves to try (THIS IS THE PRIORITY)")
+        lines.append("The judge looked at the current design and named what it lacks. Pick the ones "
+                     "that fit the brief and push them hard — aim for a more distinctive, memorable, "
+                     "beautiful page, not a safe one. Pursue at least the top idea fully:")
+        for i, ex in enumerate(explorations, 1):
+            lacks = ex.get("lacks", "")
+            idea = ex.get("idea", "")
+            lines.append(f"{i}. **Try:** {idea}")
+            if lacks:
+                lines.append(f"   - *currently lacks:* {lacks}")
+    else:
+        # No structured explorations came back — still steer toward elevation, grounded in the
+        # judge's verdict / weakest aesthetic principles rather than only fixing.
+        lines.append("\n## Design direction — make it more striking (THIS IS THE PRIORITY)")
+        lines.append("Don't just patch defects — make a bold, tasteful design move that raises "
+                     "creativity / originality / visual appeal (a signature motif, a more confident "
+                     "hero, a distinctive type or color treatment, an editorial layout).")
+
+    # ---- Secondary: visual refinements the judge flagged --------------------------------
     if issues:
-        lines.append("\n## Concrete issues the VLM judge pinpointed (worst first — address EVERY one)")
+        lines.append("\n## Visual refinements the judge flagged (worst first)")
         for i, it in enumerate(issues, 1):
             where = it.get("where", "(unspecified element)")
             problem = it.get("problem", "")
@@ -82,6 +107,12 @@ def build_feedback(candidate_dir: Path) -> str:
             lines.append(f"{i}. [{sev}] **{where}** — {problem}")
             if fix:
                 lines.append(f"   - FIX: {fix}")
+
+    # ---- Things to fix, from the non-visual checks --------------------------------------
+    if attention_fixes:
+        lines.append("\n## Attention problems the saliency model found (fix — the eye must land right)")
+        for a in attention_fixes:
+            lines.append(f"- {a}")
 
     if stress_issues:
         lines.append("\n## Broken interactions the stress test found (fix — controls must work)")
@@ -111,9 +142,29 @@ def build_feedback(candidate_dir: Path) -> str:
 
     if len(lines) == 1:
         return ""  # nothing actionable was found
-    lines.append("\n**Make a visible, substantive change for each issue above. "
-                 "Do not return a near-identical page — if nothing changes, the round is wasted.**")
+    lines.append("\n**Commit to at least one bold creative move from the design direction above, AND "
+                 "fix the concrete issues. Do not return a near-identical page — a timid copy-edit "
+                 "wastes the round.**")
     return "\n".join(lines)
+
+
+def _saliency_lowlights(saliency_details: dict, threshold: float = 0.6) -> list[str]:
+    """Saliency subscores below `threshold` (0-1), worst-first, with their explanations.
+
+    These are attention problems (eye not landing on the focal element, chaotic scanpath,
+    no clear hierarchy) the VLM judge isn't scoring — the concrete-fix half of the brief.
+    """
+    subs = saliency_details.get("subscores") or {}
+    expl = saliency_details.get("explanations") or {}
+    rows = []
+    for key, score in subs.items():
+        if key == "total":
+            continue
+        if isinstance(score, (int, float)) and score < threshold:
+            why = expl.get(key, "")
+            rows.append((score, f"{key.replace('_', ' ')} ({score:.2f}): {why}".strip()))
+    rows.sort(key=lambda r: r[0])
+    return [r[1] for r in rows]
 
 
 def main(argv: list[str] | None = None) -> int:

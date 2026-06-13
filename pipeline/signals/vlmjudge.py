@@ -148,6 +148,7 @@ class JudgeSignal:
                 # Nested shape kept for older clients / debug:
                 "per_principle": per_principle,
                 "issues": _clean_issues(parsed.get("issues")),
+                "explorations": _clean_explorations(parsed.get("explorations")),
                 "nameable_decisions": parsed.get("nameable_decisions", []),
             },
         )
@@ -266,9 +267,23 @@ def _build_prompt(brief: str, rubric: list[UXPrinciple], n_frames: int,
         "    from ~18px to ~36px / 600 weight and give it a solid #1b5e20 fill', NOT 'make the CTA "
         "    stronger'). The next agent must be able to apply it without guessing a number.",
         "  - `severity`: \"high\" (broken / blocks the brief), \"medium\", or \"low\" (polish).",
-        "List the issues worst-first. If the design is genuinely clean, return an empty `issues` list "
-        "rather than inventing problems. In each principle's `reason`, when the score is below 7, name "
-        "the specific offending element — do not give a generic justification.",
+        "List the issues worst-first. Keep `issues` to genuinely broken or weak things "
+        "(illegible text, clipped/overlapping elements, a CTA outside the focal area). If the "
+        "design is visually clean, return an empty `issues` list rather than inventing problems. "
+        "In each principle's `reason`, when the score is below 7, name the specific offending "
+        "element — do not give a generic justification.",
+        "",
+        "MOST IMPORTANT — propose `explorations`. Beyond fixing what's wrong, your primary job is "
+        "to push this design somewhere more interesting. Give 2-4 bold, specific CREATIVE moves "
+        "that would make the page more striking, memorable, and distinctive — the kind of ideas a "
+        "great art director would be excited to try, NOT safe tweaks. Each must be grounded in "
+        "something the current design LACKS or plays too safe on (say what's missing, then the "
+        "idea). Think art direction: a signature visual motif or illustration, an unexpected "
+        "layout/composition, a more confident hero treatment, a distinctive type or color move, a "
+        "tasteful entrance or hover interaction, texture/depth, an editorial detail. Be concrete "
+        "enough to build (name the element, the treatment, rough sizes/colors), but optimize for "
+        "DISTINCTIVENESS and visual delight (creativity / originality / visual appeal), not "
+        "correctness. Do NOT restate the issues here — explorations are upside, not fixes.",
         "",
         "Respond with ONLY a single JSON object, no prose before or after, in this exact shape:",
         "{",
@@ -277,6 +292,11 @@ def _build_prompt(brief: str, rubric: list[UXPrinciple], n_frames: int,
         '    "<key>": {"score": <0-10 number>, "reason": "<one short sentence; if <7, name the offending element>"}',
         "  },",
         '  "critique": "<two sentences: the single biggest strength and the single biggest weakness>",',
+        '  "explorations": [',
+        '    {"lacks": "<what the current design is missing or playing too safe on>",',
+        '     "idea": "<a specific, creative design move to try — art direction, concrete enough to build>",',
+        '     "principle": "<rubric key it would lift, e.g. creativity / originality / visual_hierarchy>"}',
+        "  ],",
         '  "issues": [',
         '    {"where": "<specific element/region, quote its text>", "problem": "<what is observably wrong>",',
         '     "principle": "<rubric key>", "fix": "<the one concrete change to make>", "severity": "high|medium|low"}',
@@ -431,6 +451,30 @@ def _clean_issues(issues) -> list[dict]:
             "severity": sev,
         })
     cleaned.sort(key=lambda i: _SEVERITY_RANK[i["severity"]])
+    return cleaned
+
+
+def _clean_explorations(explorations) -> list[dict]:
+    """Normalize the judge's `explorations` array: creative design moves to try next round.
+
+    Each entry is {lacks, idea, principle} — what the design is missing and a specific,
+    buildable creative direction to address it. Tolerant of malformed/partial entries;
+    an entry needs at least an `idea` to be useful.
+    """
+    if not isinstance(explorations, list):
+        return []
+    cleaned: list[dict] = []
+    for it in explorations:
+        if not isinstance(it, dict):
+            continue
+        idea = str(it.get("idea", "")).strip()
+        if not idea:
+            continue
+        cleaned.append({
+            "lacks": str(it.get("lacks", "")).strip(),
+            "idea": idea,
+            "principle": str(it.get("principle", "")).strip(),
+        })
     return cleaned
 
 
