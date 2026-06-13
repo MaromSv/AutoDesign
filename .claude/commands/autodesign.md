@@ -114,8 +114,10 @@ capture(
 "
 ```
 
-`pipeline/capture.py` is a stub today — it returns a skipped `CaptureResult`.
-That is expected; the loop still works end-to-end.
+`pipeline/capture.py` is implemented (Playwright): it writes the keyframe PNGs to
+`<cand>/frames/` using `config.capture` (viewport, `animation_seconds`, `keyframes`).
+It skips gracefully if Playwright/chromium isn't installed (`pip install playwright &&
+playwright install chromium`).
 
 **d. Score** each candidate:
 
@@ -123,9 +125,11 @@ That is expected; the loop still works end-to-end.
 python -m pipeline.benchmark --candidate <run_dir>/gen-000/cand-NN
 ```
 
-This writes `<run_dir>/gen-000/cand-NN/scores.json`. All signals are stubs so
-every `per_criterion` is `null` and `combined` is `0.0` — the manifest is
-still valid and the dashboard renders it.
+This writes `<run_dir>/gen-000/cand-NN/scores.json`. The benchmark CLI auto-discovers
+the frames written in step (c) under `<cand>/frames/`, so `vlm_judge` scores for real
+(needs `anthropic` + `ANTHROPIC_API_KEY`). `saliency` is still a stub and returns
+`null` — it drops out of the weighted combine, so `combined` is currently the
+`vlm_judge` score alone.
 
 **e. Pick the winner.** With real signals, the winner is `argmax(combined)`.
 Today, with stubs, every score is 0.0 — break the tie with judgment: open each

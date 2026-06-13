@@ -25,6 +25,14 @@ class CandidateContext:
     code_text: str
     brief: str
     config: dict
+    # Topic-conditioned distinctiveness inputs, populated once per run by
+    # `references.acquire_references` and shared across every candidate. `references`
+    # is a list of screenshot paths of *known AI-generated* sites in this run's vertical
+    # (harvested live, fingerprint-validated); `topic` is the vertical they exemplify
+    # (e.g. "real-estate landing page"). Empty when reference acquisition is disabled,
+    # unavailable, or finds nothing — signals must treat both as optional.
+    references: list[Path] = field(default_factory=list)
+    topic: str = ""
     # TODO: add fields as new signals need them (focal_bbox, viewport, persona, etc.).
     # Keep additions backwards-compatible (default values) so older signals keep working.
 
