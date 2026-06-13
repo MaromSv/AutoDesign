@@ -27,16 +27,18 @@ and read by every other module.
 # Edit this block to control the loop. Everything below is parsed as YAML.
 
 brief: |
-  An e-commerce landing page for **Keytags** — a keycap keychain business. They turn
-  mechanical-keyboard keycaps (artisan resin sculpts, retro doubleshot legends, blank
-  pudding caps, novelty escape/spacebar keys) into pocketable keychains for keyboard
-  enthusiasts, gamers, and gift-buyers. Hero shows the product hook and a single primary
-  CTA ("Shop Keychains") pulls the eye; supporting elements (one hero keycap-keychain
-  shot/illustration, one tagline, a hint of the range and the collectible / handmade
-  angle) build desire without stealing attention. Tone: playful, tactile, enthusiast-cool
-  — the satisfying clack and craft of mechanical keyboards made wearable — NOT sterile
-  big-box accessory store or corporate dropshipping. The CTA must end up inside
-  `saliency.focal_bbox` and any entrance animation must resolve attention onto it.
+  A landing page for **Pear** — a premium laptop company whose logo and brand
+  identity center on a pear. The hero states the brand's hook with conviction (beautifully
+  engineered laptops that feel as natural as they are powerful) and a single primary CTA
+  ("Shop Laptops") pulls the eye; supporting elements (one signature hero product visual
+  showing a sleek laptop with the pear mark, one sharp tagline, a hint of the lineup —
+  e.g. featherweight ultrabook, pro workstation, all-day battery — and credibility markers
+  like a key spec, award, or review pull-quote) build desire without stealing attention.
+  The pear logo should be a distinctive, memorable brand element (clean, fruit-as-mark,
+  not a literal photo of a pear). Tone: premium consumer tech — confident, tasteful,
+  aspirational, the polish of a flagship hardware brand — NOT a generic SaaS startup or
+  a cluttered electronics-retailer page. The CTA must end up inside `saliency.focal_bbox`
+  and any entrance animation must resolve attention onto it.
 
 loop:
   initial_candidates: 1    # candidates to generate in gen-0. 1 = build a single UI and then
