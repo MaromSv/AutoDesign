@@ -7,6 +7,12 @@ Drives a headless Chromium (Playwright) at the configured viewport:
      each one — gives the saliency signal an ordered list rest → … → settled.
   3. Record the whole session as an autoplaying webm via Playwright's
      `record_video_dir`, then rename it to `animation.webm` in the candidate dir.
+  4. Save the rendered DOM to `<cand>/page.html` — for live URLs this is the
+     post-JS DOM (SPAs serve an empty shell), which is what the slop-detector
+     fingerprint matching (the vlm_judge `ai_pitfalls` principle) reads.
+
+Accepts either a local path / `file://` URL (the evolution loop passes generated
+local HTML) or a live `http(s)` URL (the `rank` harness passes deployed sites).
 
 Why time-based scrubbing (wait_for_timeout) rather than
 `document.timeline.currentTime`: timeline scrubbing only works for declarative
@@ -19,6 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pipeline.artifacts import VIDEO_FILENAME
 
@@ -34,8 +41,25 @@ class CaptureResult:
     skipped: str | None = None
 
 
+def _to_target_url(html_path: str | Path, frames_dir: Path,
+                   viewport: tuple[int, int]) -> tuple[str | None, CaptureResult | None]:
+    """Resolve a URL string or local path into a `page.goto` target.
+
+    Returns (url, None) on success, or (None, skipped_result) when a local file
+    is missing — so the caller can return the skip without raising.
+    """
+    target = str(html_path)
+    if urlparse(target).scheme in ("http", "https", "file"):
+        return target, None
+    local = Path(html_path)
+    if not local.exists():
+        return None, CaptureResult(frames_dir=frames_dir, frames=[], viewport=viewport,
+                                   skipped=f"html missing: {local}")
+    return local.resolve().as_uri(), None
+
+
 def capture(
-    html_path: Path,
+    html_path: str | Path,
     out_dir: Path,
     viewport: tuple[int, int] = (1280, 800),
     animation_seconds: float = 0.0,
@@ -44,7 +68,7 @@ def capture(
     """Render `html_path` and screenshot it into `out_dir/frames/`.
 
     Args:
-        html_path: local path to the candidate HTML.
+        html_path: a live URL, a `file://` URL, or a local path to candidate HTML.
         out_dir: candidate directory; frames are written under `out_dir/frames/`
             and the recorded video is moved to `out_dir/animation.webm`.
         viewport: (width, height) in CSS pixels.
@@ -64,12 +88,9 @@ def capture(
     frames_dir.mkdir(parents=True, exist_ok=True)
     out_dir = Path(out_dir)
 
-    html_path = Path(html_path)
-    if not html_path.exists():
-        return CaptureResult(
-            frames_dir=frames_dir, frames=[], viewport=viewport,
-            skipped=f"html missing: {html_path}",
-        )
+    url, skip = _to_target_url(html_path, frames_dir, viewport)
+    if skip is not None:
+        return skip
 
     # Normalize keyframes: keep values in [0, 1], dedupe, sort. Always include
     # 0.0 (entry) and 1.0 (settled) so the saliency animation_focus subscore
@@ -90,7 +111,6 @@ def capture(
             skipped=f"playwright not installed: {e}",
         )
 
-    url = html_path.resolve().as_uri()
     frames: list[Path] = []
     video_target = out_dir / VIDEO_FILENAME
     recorded_video_src: Path | None = None
@@ -108,10 +128,23 @@ def capture(
                 record_video_size={"width": viewport[0], "height": viewport[1]},
             )
             page = ctx.new_page()
-            page.goto(url, wait_until="networkidle")
+            try:
+                page.goto(url, wait_until="networkidle")
+            except Exception:
+                # networkidle can time out on pages that poll forever; fall back to load.
+                page.goto(url, wait_until="load")
+
+            # Save the post-JS DOM next to the frames for the ai_pitfalls fingerprint
+            # matching; benchmark/_resolve_paths picks it up as the candidate's html.
+            try:
+                (out_dir / "page.html").write_text(page.content(), encoding="utf-8")
+            except Exception:  # noqa: BLE001 - DOM dump is a nicety; never fail capture over it
+                pass
 
             # Wall-clock walk through the keyframes. Track elapsed time so each
-            # `wait_for_timeout` is the delta since the last screenshot.
+            # `wait_for_timeout` is the delta since the last screenshot. Scroll is
+            # pinned to the top before every frame so this stays a static top-of-page
+            # shot (the frames exist to see in-place animation, not page scroll).
             elapsed_ms = 0.0
             for i, kf in enumerate(kfs):
                 target_ms = kf * total_ms
@@ -119,6 +152,10 @@ def capture(
                 if wait_ms > 0:
                     page.wait_for_timeout(wait_ms)
                     elapsed_ms = target_ms
+                try:
+                    page.evaluate("window.scrollTo(0, 0)")
+                except Exception:  # noqa: BLE001 - scroll pin is best-effort
+                    pass
                 frame_path = frames_dir / f"{i:04d}.png"
                 page.screenshot(path=str(frame_path), full_page=False)
                 frames.append(frame_path)

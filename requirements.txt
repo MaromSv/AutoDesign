@@ -7,3 +7,7 @@ pillow
 playwright
 opencv-contrib-python
 trueskill
+# VLM judge signal (pipeline/signals/vlmjudge.py). anthropic is the default judge
+# (models.judge: opus); openai is only needed if you set a gpt-* judge tier.
+anthropic
+openai

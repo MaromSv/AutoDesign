@@ -49,14 +49,35 @@ def _resolve_paths(candidate: Path) -> tuple[Path, Path | None, str]:
     return candidate_dir, html_path, code_text
 
 
+def _discover_frames(candidate: Path) -> list[Path]:
+    """Find capture frames on disk under `<candidate_dir>/frames/`.
+
+    The `--candidate` CLI scores *after* a separate capture step (the /autodesign loop
+    runs `capture()` then `python -m pipeline.benchmark`), so the frames live on disk,
+    not in memory. Without picking them up, the vlm_judge signal skips for lack of frames.
+    """
+    candidate = Path(candidate)
+    cand_dir = candidate if candidate.is_dir() else candidate.parent
+    frames_dir = cand_dir / "frames"
+    return sorted(frames_dir.glob("*.png")) if frames_dir.is_dir() else []
+
+
 def build_context(
     candidate: Path,
     brief: str,
     config: dict,
     frames: Iterable[Path] | None = None,
     html_url: str | None = None,
+    references: Iterable[Path] | None = None,
+    topic: str = "",
 ) -> CandidateContext:
-    """Construct the uniform input every signal receives."""
+    """Construct the uniform input every signal receives.
+
+    `references`/`topic` carry the run's distinctiveness exemplars (see
+    `references.acquire_references`); the engine acquires them once per run and
+    passes the same set into every candidate's context. Default empty so callers
+    that don't use distinctiveness (and existing tests) are unaffected.
+    """
     candidate_dir, html_path, code_text = _resolve_paths(candidate)
     return CandidateContext(
         candidate_dir=candidate_dir,
@@ -66,6 +87,8 @@ def build_context(
         code_text=code_text,
         brief=brief,
         config=config,
+        references=list(references or []),
+        topic=topic,
     )
 
 
@@ -146,11 +169,34 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Build the context and print the result instead of writing to disk.",
     )
+    parser.add_argument(
+        "--references",
+        action="store_true",
+        help="Acquire similar-use-case competitors (web search) so the vlm_judge also "
+             "scores originality. Cached under <run-dir>/references so it runs once per run.",
+    )
+    parser.add_argument(
+        "--run-dir",
+        default=None,
+        help="Run root where references are cached/shared across candidates. "
+             "Defaults to the candidate dir (per-candidate acquisition).",
+    )
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
     brief = (config.get("brief") or "").strip()
-    ctx = build_context(Path(args.candidate), brief=brief, config=config)
+
+    references: list = []
+    topic = ""
+    if args.references:
+        from pipeline.references import acquire_references
+        run_dir = Path(args.run_dir) if args.run_dir else Path(args.candidate)
+        ref = acquire_references(brief, run_dir, config)
+        references, topic = ref.screenshots, ref.topic
+
+    ctx = build_context(Path(args.candidate), brief=brief, config=config,
+                        frames=_discover_frames(args.candidate),
+                        references=references, topic=topic)
     result = score_candidate(ctx)
 
     if args.dry_run:
