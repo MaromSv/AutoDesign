@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AutoDesign — Dashboard (scaffold)</title>
+  <style>
+    /* Intentionally minimal. Real styling is a future pass. */
+    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
+    body { margin: 0; padding: 24px; max-width: 1200px; margin-inline: auto; }
+    header { display: flex; justify-content: space-between; align-items: baseline; }
+    h1 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+    p.empty { opacity: 0.6; }
+    section { border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AutoDesign</h1>
+    <span class="label">scaffold — empty state</span>
+  </header>
+
+  <!-- TODO: timeline slot — render one tile per generation from manifest.generations -->
+  <section id="timeline">
+    <div class="label">timeline</div>
+    <p class="empty">No runs yet.</p>
+  </section>
+
+  <!-- TODO: stage slot — iframe the currently selected generation's html -->
+  <section id="stage">
+    <div class="label">stage</div>
+    <p class="empty">Select a generation to render.</p>
+  </section>
+
+  <!-- TODO: score panel — per_criterion bars + combined number -->
+  <section id="scores">
+    <div class="label">scores</div>
+    <p class="empty">No scores available.</p>
+  </section>
+
+  <!-- TODO: critique panel — markdown-ish render of critique + nameable_decisions -->
+  <section id="critique">
+    <div class="label">critique</div>
+    <p class="empty">No critique available.</p>
+  </section>
+
+  <script>
+    // Only contract this client relies on:
+    //   GET /api/runs        -> { runs: [<id>...] }
+    //   GET /api/run/<id>    -> { run, generations: [...] }
+    // Anything beyond this is implementation detail of the engine.
+    (async () => {
+      try {
+        const r = await fetch("/api/runs");
+        const { runs = [] } = await r.json();
+        const timeline = document.querySelector("#timeline p.empty");
+        if (runs.length === 0) {
+          timeline.textContent = "No runs yet. Trigger /autodesign to create one.";
+          return;
+        }
+        // TODO: render run list + load the newest run via /api/run/<id>.
+        timeline.textContent = `Found ${runs.length} run(s). Rendering TBD.`;
+      } catch (err) {
+        document.querySelector("#timeline p.empty").textContent =
+          "Manifest API unreachable. Is dashboard/serve.py running?";
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+"""Read-only manifest API + static server for AutoDesign runs.
+
+This is the *only* contract between the engine and the UI. The engine writes
+artifacts under `.autodesign/runs/<id>/`; this server reads them and serves a
+JSON manifest. The dashboard html is a thin client over that manifest.
+
+Swapping the UI = editing `dashboard/` only. Do not import from `pipeline/`
+beyond `pipeline.artifacts` (the disk-layout contract).
+
+## Endpoints
+
+    GET /                  -> dashboard.html
+    GET /api/runs          -> { "runs": [<id>, ...] }
+    GET /api/run/<id>      -> {
+        "run": <id>,
+        "generations": [
+          { "id": "gen-NNN",
+            "winner": "cand-XX" | null,
+            "candidates": [
+              { "id": "cand-XX",
+                "html": "/.autodesign/.../index.html" | null,
+                "frames": ["/.autodesign/.../frames/0000.png", ...],
+                "saliency": "/.autodesign/.../saliency.png" | null,
+                "combined": <float|null>,
+                "per_criterion": { "<key>": <float|null>, ... },
+                "critique": "...",
+                "nameable_decisions": [...] } ] } ] }
+    GET /.autodesign/...   -> static files from the run tree
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+# Allow running as `python dashboard/serve.py`: Python puts the script's dir on
+# sys.path, not the cwd, so we add the project root explicitly.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from pipeline.artifacts import (
+    FRAMES_DIRNAME,
+    HTML_FILENAME,
+    LINEAGE_FILENAME,
+    RUNS_ROOT,
+    SALIENCY_FILENAME,
+    SCORES_FILENAME,
+    WINNER_FILENAME,
+)
+
+
+HOST = "127.0.0.1"
+PORT = 8765
+ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent
+
+
+def list_runs(runs_root: Path = RUNS_ROOT) -> list[str]:
+    """Return run ids (directory names) sorted newest-first by name."""
+    if not runs_root.exists():
+        return []
+    return sorted(
+        (p.name for p in runs_root.iterdir() if p.is_dir()),
+        reverse=True,
+    )
+
+
+def _read_json(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _url_for(path: Path) -> str | None:
+    """Build a project-root-relative URL for a file path, or None if it is outside the project."""
+    try:
+        rel = path.resolve().relative_to(PROJECT_ROOT.resolve())
+    except ValueError:
+        return None
+    return f"/{rel.as_posix()}"
+
+
+def _list_frames(gen_dir: Path) -> list[str]:
+    frames_dir = gen_dir / FRAMES_DIRNAME
+    if not frames_dir.exists():
+        return []
+    urls = (_url_for(p) for p in frames_dir.glob("*.png"))
+    return sorted(u for u in urls if u is not None)
+
+
+def _candidate_manifest(cand_path: Path) -> dict:
+    """One candidate entry in the per-generation `candidates` list."""
+    scores = _read_json(cand_path / SCORES_FILENAME) or {}
+    html = cand_path / HTML_FILENAME
+    saliency = cand_path / SALIENCY_FILENAME
+    return {
+        "id": cand_path.name,
+        "html": _url_for(html) if html.exists() else None,
+        "frames": _list_frames(cand_path),
+        "saliency": _url_for(saliency) if saliency.exists() else None,
+        "combined": scores.get("combined"),
+        "per_criterion": scores.get("per_criterion", {}),
+        "critique": scores.get("critique", ""),
+        "nameable_decisions": scores.get("nameable_decisions", []),
+    }
+
+
+def build_run_manifest(run_id: str, runs_root: Path = RUNS_ROOT) -> dict | None:
+    """Read one run directory and produce the dashboard manifest object.
+
+    Returns None if the run does not exist; otherwise a fully-formed manifest,
+    even when individual generations are missing files (the fields are filled
+    with empty / null defaults so the UI can render an empty state).
+
+    TODO: include `lineage.jsonl` once it carries content beyond the score.
+    """
+    run_dir = runs_root / run_id
+    if not run_dir.exists():
+        return None
+
+    generations: list[dict] = []
+    for gen_path in sorted(p for p in run_dir.iterdir() if p.is_dir() and p.name.startswith("gen-")):
+        cand_dirs = sorted(
+            p for p in gen_path.iterdir() if p.is_dir() and p.name.startswith("cand-")
+        )
+        candidates = [_candidate_manifest(c) for c in cand_dirs]
+        winner_obj = _read_json(gen_path / WINNER_FILENAME) or {}
+        generations.append({
+            "id": gen_path.name,
+            "winner": winner_obj.get("winner"),
+            "candidates": candidates,
+        })
+
+    _ = LINEAGE_FILENAME  # TODO: surface lineage entries when the loop writes them.
+    return {"run": run_id, "generations": generations}
+
+
+class Handler(BaseHTTPRequestHandler):
+    """Minimal manifest API. No write endpoints — everything is read-only."""
+
+    def log_message(self, format: str, *args) -> None:  # noqa: A002 — stdlib signature
+        # Keep stdout quiet by default. Override in dev if you want request logs.
+        return
+
+    def _json(self, payload: dict, status: int = 200) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _file(self, path: Path, content_type: str | None = None) -> None:
+        try:
+            data = path.read_bytes()
+        except OSError:
+            self.send_error(404)
+            return
+        self.send_response(200)
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self) -> None:  # noqa: N802 — stdlib signature
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+
+        if path == "/":
+            self._file(ROOT / "dashboard.html", "text/html; charset=utf-8")
+            return
+
+        if path == "/api/runs":
+            self._json({"runs": list_runs()})
+            return
+
+        if path.startswith("/api/run/"):
+            run_id = path[len("/api/run/"):].strip("/")
+            manifest = build_run_manifest(run_id)
+            if manifest is None:
+                self._json({"error": f"unknown run: {run_id}"}, status=404)
+                return
+            self._json(manifest)
+            return
+
+        if path.startswith("/.autodesign/"):
+            # Static files under the run tree. Resolve safely and refuse traversal.
+            rel = path.lstrip("/")
+            target = (PROJECT_ROOT / rel).resolve()
+            if not str(target).startswith(str(PROJECT_ROOT.resolve())):
+                self.send_error(403)
+                return
+            if not target.exists() or not target.is_file():
+                self.send_error(404)
+                return
+            self._file(target)
+            return
+
+        self.send_error(404)
+
+
+def serve(host: str = HOST, port: int = PORT) -> None:
+    """Block, serving the dashboard on host:port. Ctrl-C to stop."""
+    with ThreadingHTTPServer((host, port), Handler) as httpd:
+        print(f"AutoDesign dashboard on http://{host}:{port}")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+
+if __name__ == "__main__":
+    serve()

@@ -1,0 +1,9 @@
+pyyaml
+requests
+pillow
+# Optional — these are not exercised by the scaffold but will be needed when real
+# signals and capture land. They are listed here so a single `pip install` sets up
+# a working environment for later passes.
+playwright
+opencv-contrib-python
+trueskill
