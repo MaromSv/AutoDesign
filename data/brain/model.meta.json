@@ -1,0 +1,7 @@
+{
+  "n_parcels": 1000,
+  "model": "rbf_svm",
+  "n_good": 149,
+  "n_bad": 135,
+  "selected_by": "bakeoff_cv_auc"
+}
