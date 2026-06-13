@@ -19,7 +19,7 @@ from pipeline.references import (
 def test_load_cfg_merges_defaults_with_overrides():
     cfg = _load_cfg({"originality": {"n_references": 3}})
     assert cfg["n_references"] == 3
-    assert cfg["n_candidates"] == _DEFAULTS["n_candidates"]  # untouched default carried through
+    assert cfg["max_search_rounds"] == _DEFAULTS["max_search_rounds"]  # untouched default carried through
 
 
 def test_disabled_writes_skip_manifest_and_no_screenshots(tmp_path):

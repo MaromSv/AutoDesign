@@ -2,7 +2,7 @@
 name: judge
 description: Use this agent when AutoDesign needs a high-quality VLM verdict on a rendered candidate — the in-loop quality signal that scores how well the design serves the brief.
 tools: Read, Glob
-model: opus
+model: sonnet
 ---
 
 # TODO: judge system prompt

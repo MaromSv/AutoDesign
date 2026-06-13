@@ -34,9 +34,9 @@ from pipeline.signals.vlmjudge import _resolve_model
 
 _DEFAULTS = {
     "enabled": True,
-    "n_references": 5,          # peer screenshots to keep (caps the expensive render step)
-    "n_candidates": 10,         # URLs the agent returns; we over-fetch then keep what renders
+    "n_references": 5,          # how many similar sites to look for AND keep (keep all that render)
     "max_search_rounds": 6,     # server-tool (web_search) continuation cap
+    "max_workers": 5,           # peers are captured in parallel; cap simultaneous headless browsers
 }
 
 _MANIFEST = "references.json"
@@ -138,7 +138,7 @@ def _research_sites(brief: str, seed_url: str | None, cfg: dict,
     prompt = _RESEARCH_PROMPT.format(
         brief=(brief or "(no brief — infer the use case from the site under review)").strip(),
         seed_line=seed_line,
-        n=int(cfg["n_candidates"]),
+        n=int(cfg.get("n_references", 5)),
     )
 
     client = anthropic.Anthropic()
@@ -177,31 +177,51 @@ def _peer_slug(url: str) -> str:
 
 def _capture_references(topic: str, candidates: list[dict], refs_dir: Path,
                         cfg: dict, config: dict, seed_url: str | None) -> ReferenceSet:
-    """Screenshot each peer with AutoDesign's renderer; keep the ones that render."""
+    """Screenshot every peer in parallel with AutoDesign's renderer; keep all that render.
+
+    We look for a small set (`n_references`) and keep however many actually render — no
+    over-fetch, no hard floor. If none render, `screenshots` is empty and the caller's
+    originality dimension simply doesn't run (it's never penalized for an empty set).
+    """
+    from concurrent.futures import ThreadPoolExecutor
     from pipeline.capture import capture as _capture
 
     refs_dir.mkdir(parents=True, exist_ok=True)
     vp = ((config or {}).get("capture") or {}).get("viewport") or [1280, 800]
     viewport = (int(vp[0]), int(vp[1]))
-    want = int(cfg["n_references"])
     seed_norm = (seed_url or "").rstrip("/")
 
-    screenshots: list[Path] = []
-    sources: list[dict] = []
+    # Drop the candidate-under-review and any duplicate URLs before rendering.
+    targets: list[dict] = []
+    seen: set[str] = set()
     for cand in candidates:
-        if len(screenshots) >= want:
-            break
-        url = cand["url"]
-        if url.rstrip("/") == seed_norm:
-            continue  # never compare the candidate against itself
-        peer_dir = refs_dir / _peer_slug(url)
-        res = _capture(url, peer_dir, viewport=viewport, animation_seconds=0.0, keyframes=[0.0])
-        if not res.frames:
-            continue  # dead link / render failure / no Playwright — skip
-        shot = res.frames[0]
-        screenshots.append(shot)
-        sources.append({"url": url, "why": cand.get("why", ""), "screenshot": str(shot)})
+        key = cand["url"].rstrip("/")
+        if key == seed_norm or key in seen:
+            continue
+        seen.add(key)
+        targets.append(cand)
 
+    def _shoot(cand: dict) -> dict | None:
+        url = cand["url"]
+        try:
+            res = _capture(url, refs_dir / _peer_slug(url), viewport=viewport,
+                           animation_seconds=0.0, keyframes=[0.0])
+        except Exception:  # noqa: BLE001 - dead link / render failure -> drop this peer
+            return None
+        if not res.frames:
+            return None
+        return {"url": url, "why": cand.get("why", ""), "screenshot": str(res.frames[0])}
+
+    # Render peers concurrently — each capture() is a self-contained headless session, so
+    # they parallelize cleanly. Cap simultaneous browsers; .map preserves input order so
+    # the kept set is deterministic.
+    sources: list[dict] = []
+    if targets:
+        workers = max(1, min(int(cfg.get("max_workers", 5)), len(targets)))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            sources = [r for r in pool.map(_shoot, targets) if r]
+
+    screenshots = [Path(s["screenshot"]) for s in sources]
     skipped = None if screenshots else "no similar site could be rendered"
     return ReferenceSet(topic=topic, screenshots=screenshots, sources=sources, skipped=skipped)
 

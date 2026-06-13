@@ -27,7 +27,14 @@ and read by every other module.
 # Edit this block to control the loop. Everything below is parsed as YAML.
 
 brief: |
-  TODO: paste the design brief here, or leave blank to use the prose above.
+  An e-commerce landing page for **Klack** — keycap keychains. They take real
+  mechanical-keyboard keycaps (artisan sculpts, retro colorways, novelty legends)
+  and turn them into pocketable keychains that still *click*. Hero shows the
+  product hook and a single primary CTA ("Shop Keycaps") pulls the eye; supporting
+  elements (one product shot/illustration, one tagline, a hint of the range) build
+  desire without stealing attention. Tone: playful enthusiast-collector, tactile and
+  a little nerdy, NOT corporate dropshipping-store. The CTA must end up inside
+  `saliency.focal_bbox` and any entrance animation must resolve attention onto it.
 
 loop:
   initial_candidates: 1    # candidates to generate in gen-0. 1 = build a single UI and then
@@ -40,9 +47,9 @@ loop:
 models:
   # Cost tiers. Cheaper models for fast inner-loop work, opus for the final judge.
   generate:  sonnet        # candidate UI generator
-  judge:     opus          # VLM / final-pass judge
+  judge:     sonnet        # VLM / final-pass judge (switched opus -> sonnet per request)
   cheap_pass: haiku        # quick passes, persona reactions, sanity checks
-  evaluator: sonnet        # held-out pairwise evaluator (MUST differ from `judge`)
+  evaluator: haiku         # held-out pairwise evaluator (MUST differ from `judge`)
 
 criteria:
   # Signal key -> weight. Weights are renormalized over signals that returned a
