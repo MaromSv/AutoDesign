@@ -27,13 +27,15 @@ and read by every other module.
 # Edit this block to control the loop. Everything below is parsed as YAML.
 
 brief: |
-  An e-commerce landing page for **Klack** — keycap keychains. They take real
-  mechanical-keyboard keycaps (artisan sculpts, retro colorways, novelty legends)
-  and turn them into pocketable keychains that still *click*. Hero shows the
-  product hook and a single primary CTA ("Shop Keycaps") pulls the eye; supporting
-  elements (one product shot/illustration, one tagline, a hint of the range) build
-  desire without stealing attention. Tone: playful enthusiast-collector, tactile and
-  a little nerdy, NOT corporate dropshipping-store. The CTA must end up inside
+  An e-commerce landing page for **Keytags** — a keycap keychain business. They turn
+  mechanical-keyboard keycaps (artisan resin sculpts, retro doubleshot legends, blank
+  pudding caps, novelty escape/spacebar keys) into pocketable keychains for keyboard
+  enthusiasts, gamers, and gift-buyers. Hero shows the product hook and a single primary
+  CTA ("Shop Keychains") pulls the eye; supporting elements (one hero keycap-keychain
+  shot/illustration, one tagline, a hint of the range and the collectible / handmade
+  angle) build desire without stealing attention. Tone: playful, tactile, enthusiast-cool
+  — the satisfying clack and craft of mechanical keyboards made wearable — NOT sterile
+  big-box accessory store or corporate dropshipping. The CTA must end up inside
   `saliency.focal_bbox` and any entrance animation must resolve attention onto it.
 
 loop:
