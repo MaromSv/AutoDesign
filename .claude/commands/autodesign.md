@@ -68,12 +68,15 @@ winner. The dashboard reads `.autodesign/runs/<id>/` to render the run.
 
 2. **Persist the brief** to `<run_dir>/brief.txt`.
 
-## Generation 0 — seed (or fan out)
+## Generation 0 — minimal baseline (or fan out)
 
 Generate `loop.initial_candidates` (default **1**) candidate(s). With the default of 1,
-build a single strong candidate (`cand-00`) — it becomes the seed that every later
-generation refines. When `initial_candidates > 1`, make the variants meaningfully
-different on at least three axes:
+build a single **minimal baseline** (`cand-00`): a clean, correct page that delivers
+exactly what the brief asks and nothing more — NO creative flourishes, signature art
+direction, or heavy animation yet. The VLM judge then says what it lacks and the
+refinement rounds add the design on top. (The generator subagent enforces this — just
+let it build the plain baseline; don't ask for pizazz at gen-0.) When
+`initial_candidates > 1`, make the variants meaningfully different on at least three axes:
 
 - Layout (asymmetric left-hero / symmetric bold / editorial columns / illustration-led / minimal grid)
 - Primary focal element (typography hero / product preview / illustration / data)
