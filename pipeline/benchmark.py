@@ -203,8 +203,13 @@ def main(argv: list[str] | None = None) -> int:
     topic = ""
     if args.references:
         from pipeline.references import acquire_references
+        from pipeline.brief import resolve_brief
         run_dir = Path(args.run_dir) if args.run_dir else Path(args.candidate)
-        ref = acquire_references(brief, run_dir, config)
+        # Feed the *real* brief (brief.txt / prose), not the "TODO: paste..." placeholder
+        # from config — otherwise the research agent can't infer the use case and finds
+        # no competitors, so originality silently no-ops ("agent found no similar sites").
+        resolved_brief = resolve_brief(brief, Path(args.candidate), args.config)
+        ref = acquire_references(resolved_brief, run_dir, config)
         references, topic = ref.screenshots, ref.topic
 
     ctx = build_context(Path(args.candidate), brief=brief, config=config,

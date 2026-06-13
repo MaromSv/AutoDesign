@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AutoDesign</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -37,16 +38,19 @@
     /* ---- top bar (editorial masthead) ----------------------------------- */
     header.masthead {
       border-bottom: 1px solid var(--rule);
-      padding: 18px 36px 16px;
-      display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 24px;
+      padding: 14px 32px;
+      display: flex; align-items: center; gap: 28px;
       background: var(--paper);
     }
-    .wordmark {
-      font-family: var(--serif); font-weight: 500;
-      font-size: 32px; letter-spacing: -0.01em; line-height: 1;
+    .brand { display: flex; align-items: center; }
+    .brand img {
+      display: block; height: 40px; width: auto;
+      /* multiply blends the PNG's white background into the cream paper
+         while leaving the black wordmark + orange mark intact */
+      mix-blend-mode: multiply;
     }
-    .wordmark em { font-style: italic; color: var(--accent); font-weight: 500; }
     .nav { display: flex; gap: 0; align-self: end; }
+    .meta { margin-left: auto; }
     .nav button {
       background: transparent; border: 0; padding: 6px 16px 10px;
       font-family: var(--serif); font-size: 16px; color: var(--ink-3);
@@ -133,7 +137,13 @@
       display: flex; flex-direction: column; gap: 12px;
     }
     .stage {
-      position: relative; aspect-ratio: 1280 / 800;
+      position: relative;
+      /* aspect-ratio + max-width come from --vw/--vh, set per-run from
+         manifest.viewport in JS. Portrait phone runs end up tall and narrow;
+         landscape landing-page runs end up wide. */
+      aspect-ratio: var(--vw, 1280) / var(--vh, 800);
+      max-width: min(100%, calc(var(--vw, 1280) * 1px));
+      margin-inline: auto;
       background: #fff; border: 1px solid var(--rule);
       overflow: hidden;
       box-shadow: 0 18px 40px -22px rgba(28,24,20,0.35);
@@ -145,18 +155,53 @@
       pointer-events: none;
     }
     .stage .layer.active { opacity: 1; }
-    .stage .saliency-layer { mix-blend-mode: normal; }
-    /* Live iframe stage layer — fixed at the page's design viewport (1280x800)
-       and CSS-scaled to fit the stage box. Lets us render the candidate's
-       actual HTML so its entrance animations run on every flip, instead of
-       trying to autoplay a recorded webm (which browsers gate behind user
-       gestures). */
+    /* Saliency layer rides on top of the iframe so the animation plays
+       underneath while the heatmap stays visible the whole time.
+       `lighten` keeps cold regions of the heatmap from darkening the
+       iframe — only the hot inferno colors win over the page underneath.
+       (For runs whose saliency.png is the newer heat-only RGBA, the PNG's
+       alpha channel makes cold regions transparent anyway, so `lighten`
+       still does the right thing.) */
+    .stage .saliency-layer { mix-blend-mode: lighten; z-index: 2; }
+
+    /* Scanpath layer: numbered fixation order over the stage, drawn from
+       saliency.details.scanpath_norm. Toggled together with the heatmap. */
+    .stage .scanpath-layer {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0; transition: opacity 220ms ease;
+      z-index: 3;
+    }
+    .stage .scanpath-layer.active { opacity: 1; }
+    .stage .scanpath-layer svg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    .stage .scanpath-layer .sp-line {
+      stroke: var(--accent); stroke-width: 2;
+      fill: none; opacity: 0.9;
+      /* Subtle white halo so the path reads on both dark and light pages */
+      filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.85));
+    }
+    .stage .scanpath-layer .sp-dot {
+      position: absolute; width: 22px; height: 22px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%; background: #fff; border: 2px solid var(--accent);
+      display: grid; place-items: center;
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      color: var(--ink);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    }
+    .stage .scanpath-layer .sp-dot.first {
+      background: var(--accent); color: #fff; border-color: #fff;
+    }
     .stage .frame-layer {
       position: absolute; top: 0; left: 0;
-      width: 1280px; height: 800px;
+      /* Native viewport pixel size — JS sets these from manifest.viewport
+         and adjusts the scale transform so the page fills the stage box. */
+      width: var(--vw, 1280px); height: var(--vh, 800px);
       border: 0; background: transparent;
       transform-origin: top left;
-      pointer-events: none;
+      pointer-events: none; z-index: 1;
     }
     .stage .empty-layer {
       position: absolute; inset: 0; display: grid; place-items: center;
@@ -172,6 +217,7 @@
       font-family: var(--serif); font-size: 24px; line-height: 1;
       cursor: pointer; display: grid; place-items: center;
       opacity: 0; transition: opacity 160ms ease;
+      z-index: 3;
     }
     .stage:hover .nav-arrow { opacity: 1; }
     .stage .nav-arrow:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -185,6 +231,7 @@
       background: rgba(255,255,255,0.92); border: 1px solid var(--rule);
       padding: 6px 10px; font-family: var(--mono); font-size: 11px;
       letter-spacing: 0.06em; color: var(--ink);
+      z-index: 3;
     }
     .stage .stage-badge .star { color: var(--accent); font-weight: 600; }
     .stage .open-live {
@@ -192,6 +239,7 @@
       background: var(--accent); color: #fff; border: 1px solid var(--accent);
       padding: 6px 10px; font-family: var(--mono); font-size: 11px;
       letter-spacing: 0.04em; cursor: pointer;
+      z-index: 3;
     }
 
     /* below-stage controls bar: dots + saliency toggle + auto-play */
@@ -375,9 +423,8 @@
     /* ============================================================ */
     /* PAGE 2 — METRICS                                              */
     /* ============================================================ */
-    .metrics-head { padding: 56px 48px 24px; max-width: 1500px; margin-inline: auto; }
     .metrics-grid {
-      max-width: 1500px; margin-inline: auto; padding: 0 48px 48px;
+      max-width: 1500px; margin-inline: auto; padding: 56px 48px 48px;
       display: grid; gap: 48px; grid-template-columns: 1fr;
     }
     .chart-card {
@@ -404,66 +451,6 @@
       display: grid; gap: 36px 48px;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
-
-    /* VLM judge feedback */
-    .vlm-section {
-      max-width: 1500px; margin: 0 auto; padding: 32px 48px 80px;
-      border-top: 1px solid var(--rule);
-    }
-    .vlm-section .head {
-      display: flex; justify-content: space-between; align-items: baseline;
-      margin-bottom: 18px;
-    }
-    .vlm-section h3 {
-      margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 500;
-    }
-    .vlm-section .badge {
-      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
-      border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 99px;
-    }
-    .vlm-list {
-      display: grid; gap: 14px;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    }
-    .vlm-card {
-      padding: 18px; border: 1px solid var(--rule); background: var(--paper-2);
-    }
-    .vlm-card .gen {
-      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-      letter-spacing: 0.06em; text-transform: uppercase;
-    }
-    .vlm-card .feedback {
-      font-family: var(--serif); font-size: 17px; font-style: italic;
-      color: var(--ink-2); margin-top: 8px; line-height: 1.45;
-    }
-    .vlm-card .issues-label {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--ink-3);
-      margin-top: 16px; margin-bottom: 8px;
-    }
-    .vlm-issue {
-      margin-top: 10px; padding-left: 12px;
-      border-left: 2px solid var(--rule);
-    }
-    .vlm-issue.sev-high   { border-left-color: var(--accent); }
-    .vlm-issue.sev-medium { border-left-color: var(--ink-3); }
-    .vlm-issue .where {
-      font-family: var(--mono); font-size: 11px; color: var(--ink);
-    }
-    .vlm-issue .sev {
-      font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--ink-3); margin-left: 6px;
-    }
-    .vlm-issue.sev-high .sev { color: var(--accent); }
-    .vlm-issue .problem {
-      font-family: var(--serif); font-size: 14px; color: var(--ink-2);
-      line-height: 1.4; margin-top: 3px;
-    }
-    .vlm-issue .fix {
-      font-family: var(--serif); font-size: 14px; font-style: italic;
-      color: var(--ink); line-height: 1.4; margin-top: 3px;
-    }
-    .vlm-issue .fix::before { content: "→ "; color: var(--accent); font-style: normal; }
 
     /* svg chart helpers */
     .axis-line { stroke: var(--rule); stroke-width: 1; opacity: 0.45; }
@@ -494,145 +481,12 @@
       width: 100%; height: 100%; background: white;
       border: 1px solid var(--rule);
     }
-
-    /* ---- signal explainer sections (metrics page) ---------------------- */
-    /* One per new criterion: a header + a plain-English "what it grades on"
-       lead, then per-generation cards showing the evidence behind the score. */
-    .signal-section {
-      max-width: 1500px; margin: 0 auto; padding: 36px 48px 8px;
-      border-top: 1px solid var(--rule);
-    }
-    .signal-section .head {
-      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;
-    }
-    .signal-section h3 { margin: 0; font-family: var(--serif); font-size: 24px; font-weight: 500; }
-    .signal-section .badge {
-      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
-      border: 1px solid var(--ink-3); color: var(--ink-3); border-radius: 99px;
-    }
-    .signal-section .badge.live { border-color: var(--accent); color: var(--accent); }
-    .signal-lead {
-      font-family: var(--serif); font-size: 17px; font-style: italic;
-      color: var(--ink-2); margin: 0 0 8px; max-width: 72ch; line-height: 1.45;
-    }
-    .signal-grades {
-      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-      letter-spacing: 0.03em; margin: 0 0 22px; max-width: 78ch; line-height: 1.55;
-    }
-    .signal-grades b { color: var(--ink-2); font-weight: 600; }
-
-    .gen-cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
-    .gen-card { padding: 18px; border: 1px solid var(--rule); background: var(--paper-2); }
-    .gen-card .gen-top {
-      display: flex; justify-content: space-between; align-items: baseline;
-      border-bottom: 1px solid var(--rule); padding-bottom: 8px; margin-bottom: 12px;
-    }
-    .gen-card .gen-top .g {
-      font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-      letter-spacing: 0.06em; text-transform: uppercase;
-    }
-    .gen-card .gen-top .score {
-      font-family: var(--serif); font-size: 24px; font-weight: 500; color: var(--ink); line-height: 1;
-    }
-    .gen-card .gen-top .score sup { font-size: 11px; color: var(--ink-3); font-weight: 400; margin-left: 2px; }
-    .empty-inline {
-      font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-3); padding: 4px 0;
-    }
-
-    /* requirement checklist (prompt consistency) */
-    .req-group-label {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--ink-3); margin: 14px 0 6px;
-    }
-    .req-group-label:first-of-type { margin-top: 2px; }
-    .reqs { display: grid; gap: 6px; }
-    .req { display: flex; gap: 9px; align-items: baseline; font-size: 13.5px; line-height: 1.4; }
-    .req .mark { font-family: var(--mono); font-size: 12px; flex: none; width: 13px; text-align: center; }
-    .req.met    { color: var(--ink-2); } .req.met .mark    { color: var(--good); }
-    .req.miss   { color: var(--ink);   } .req.miss .mark   { color: var(--bad); font-weight: 600; }
-    .req.contra { color: var(--ink);   } .req.contra .mark { color: var(--accent); font-weight: 600; }
-    .rationale {
-      font-family: var(--serif); font-style: italic; font-size: 14px;
-      color: var(--ink-2); margin-top: 14px; line-height: 1.45;
-    }
-
-    /* summary stat chips (stress test) */
-    .stat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-    .stat-chip {
-      font-family: var(--mono); font-size: 11px; padding: 4px 9px;
-      border: 1px solid var(--rule); color: var(--ink-2); background: var(--paper);
-    }
-    .stat-chip strong { color: var(--ink); }
-    .stat-chip.warn { border-color: var(--accent); color: var(--accent); }
-    .stat-chip.warn strong { color: var(--accent); }
-    .note-block { font-family: var(--serif); font-size: 14px; color: var(--ink-2); line-height: 1.45; margin-top: 12px; }
-    .note-block .lbl {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 3px;
-    }
-
-    /* severity-tagged issue (shared by stress test) */
-    .sig-issue { margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--rule); }
-    .sig-issue.sev-critical { border-left-color: var(--bad); }
-    .sig-issue.sev-high     { border-left-color: var(--accent); }
-    .sig-issue.sev-medium   { border-left-color: var(--ink-3); }
-    .sig-issue.sev-low      { border-left-color: var(--ink-3); opacity: 0.85; }
-    .sig-issue .sev {
-      font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--ink-3); margin-right: 7px;
-    }
-    .sig-issue.sev-critical .sev { color: var(--bad); }
-    .sig-issue.sev-high .sev { color: var(--accent); }
-    .sig-issue .desc { font-family: var(--serif); font-size: 14px; color: var(--ink-2); line-height: 1.4; }
-
-    /* persona row (stress test subagent mode) */
-    .persona { margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--rule); }
-    .persona.ok   { border-left-color: var(--good); }
-    .persona.fail { border-left-color: var(--bad); }
-    .persona .pname { font-family: var(--mono); font-size: 11px; color: var(--ink); }
-    .persona .pgoal-met {
-      font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
-      text-transform: uppercase; margin-left: 8px;
-    }
-    .persona.ok .pgoal-met   { color: var(--good); }
-    .persona.fail .pgoal-met { color: var(--bad); }
-    .persona .psum {
-      font-family: var(--serif); font-size: 13.5px; font-style: italic;
-      color: var(--ink-2); margin-top: 2px; line-height: 1.4;
-    }
-
-    /* brain / design classifier: P(good) bar + feature legend */
-    .pgood-bar {
-      height: 24px; background: var(--paper); border: 1px solid var(--rule);
-      position: relative; overflow: hidden;
-    }
-    .pgood-bar .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); opacity: 0.78; transition: width 300ms ease; }
-    .pgood-bar .mid  { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--rule); opacity: 0.6; }
-    .pgood-bar .txt  {
-      position: absolute; inset: 0; display: flex; align-items: center; padding-left: 10px;
-      font-family: var(--mono); font-size: 11px; color: var(--ink);
-    }
-    .feature-grid {
-      display: grid; gap: 5px 20px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      margin: 0 0 4px; padding: 16px 18px; border: 1px solid var(--rule); background: var(--paper-2);
-    }
-    .feature-grid .f {
-      font-family: var(--mono); font-size: 11px; color: var(--ink-2);
-      display: flex; justify-content: space-between; gap: 12px;
-      border-bottom: 1px dotted var(--ink-3); padding: 3px 0;
-    }
-    .feature-grid .f .fk { color: var(--ink-3); text-align: right; }
-    .backend-note {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
-      color: var(--ink-3); margin-top: 8px;
-    }
-    .backend-note.fallback { color: var(--accent); }
   </style>
 </head>
 <body>
 
 <header class="masthead">
-  <div class="wordmark">autodesign<em>.</em></div>
+  <div class="brand"><img src="/logo.png" alt="autodesign." /></div>
   <nav class="nav">
     <button data-view="evolution" class="active">Evolution</button>
     <button data-view="metrics">Metrics</button>
@@ -668,30 +522,46 @@ const STATE = {
   view: "evolution",        // "evolution" | "metrics"
   scrubIndex: 0,            // index into generations
   candIndex: 0,             // which sibling within current gen is on stage
-  showSaliency: false,      // overlay on the stage
+  // Saliency toggle is a "sticky" UI preference: once the user turns it on
+  // it stays on across candidate flips, gen scrubs, and run switches —
+  // it only flips when the user clicks the toggle again.
+  showSaliency: false,
   playTimer: null,          // interval id for auto-cycle through siblings
-  stageA: null,             // ping-pong base image layers (stable across flips)
-  stageB: null,
-  stageSal: null,           // saliency layer
+  stageSal: null,           // saliency layer (heatmap PNG)
+  stagePath: null,          // scanpath layer (1→2→…→N fixation order)
   stageFrame: null,         // live iframe layer showing the candidate's actual HTML
   stageRO: null,            // ResizeObserver to keep the iframe scale matched to the stage box
-  stageActive: "a",         // which base layer is currently visible
 };
 
 const SUB_LABELS = {
-  intent_alignment:   "intent alignment",
-  focus_clarity:      "focus clarity",
-  reading_order:      "reading order",
-  animation_focus:    "animation focus",
-  // new top-level criteria (each is also explained in its own metrics section)
-  prompt_consistency: "brief adherence",
-  stress_test:        "interaction QA",
-  brain_judge:        "design classifier",
+  // saliency subscores
+  intent_alignment:        "intent alignment",
+  focus_clarity:           "focus clarity",
+  reading_order:           "reading order",
+  animation_focus:         "animation focus",
+  // vlm_judge UX principles — the rubric currently in _ui_rubric.py
+  creativity:              "creativity & distinctiveness",
+  motion:                  "motion & animation",
+  brief_adherence:         "brief adherence",
+  visual_hierarchy:        "visual hierarchy",
+  color_contrast:          "color & contrast",
+  typography:              "typography",
+  layout_spacing:          "layout & spacing",
+  consistency:             "consistency",
+  affordance_clarity:      "affordance & clarity",
+  // conditional vlm_judge principles
+  originality:             "originality vs. peers",
+  ai_pitfalls:             "ai-slop avoidance",
+  // newer top-level signals (their own criteria, not vlm_judge principles)
+  prompt_consistency:      "feature coverage",
+  stress_test:             "interaction QA",
+  brain_judge:             "design classifier",
   // legacy keys (left in so historical runs still pretty-print)
-  hero_pull:          "hero pull",
-  focal_dominance:    "focal dominance",
-  composition_spread: "spread",
-  scan_rhythm:        "scan rhythm",
+  polish_distinctiveness:  "polish & distinctiveness",
+  hero_pull:               "hero pull",
+  focal_dominance:         "focal dominance",
+  composition_spread:      "spread",
+  scan_rhythm:             "scan rhythm",
 };
 
 // ============================================================
@@ -785,32 +655,21 @@ function renderEvolution() {
   main.innerHTML = "";
 
   const gen = gens[STATE.scrubIndex];
-  // Clamp candIndex into this gen's candidate list.
   if (STATE.candIndex >= gen.candidates.length) STATE.candIndex = 0;
 
-  // hero: info column + stage shell column
   const info = el("div", { class: "evo-info", id: "evo-info" });
   const stageShell = el("div", { class: "stage-shell" }, buildStageShell(gen));
   main.appendChild(el("section", { class: "evo-hero" }, info, stageShell));
   paintInfo(gen);
 
-  // scrubber
   main.appendChild(renderScrubber(gens));
 
-  // criterion strip — reflects the candidate currently on stage
   main.appendChild(el("div", { class: "criteria", id: "criteria-strip" }));
   paintCriteria(gen);
 }
 
-/* Build the stage shell ONCE per generation: two stable base img layers,
-   one saliency layer, prev/next arrows, badge, open-live button, and a
-   bar with sibling dots + saliency toggle + auto-play. After this, all
-   updates (flip, toggle, play) mutate the existing DOM so transitions animate. */
 function buildStageShell(gen) {
   const stage = el("div", { class: "stage" });
-  // Live iframe layer — the candidate's actual HTML, so its entrance
-  // animation runs on every flip. The page is authored for 1280x800; we
-  // CSS-scale the iframe down so it fits whatever size the stage box ends up.
   STATE.stageFrame = el("iframe", {
     class: "layer frame-layer",
     sandbox: "allow-same-origin allow-scripts",
@@ -818,17 +677,28 @@ function buildStageShell(gen) {
     title: "candidate preview",
   });
   STATE.stageSal = el("img", { class: "layer saliency-layer", alt: "saliency overlay" });
-  STATE.stageActive = "a";
+  STATE.stagePath = el("div", { class: "scanpath-layer", "aria-label": "predicted fixation order" });
   stage.appendChild(STATE.stageFrame);
   stage.appendChild(STATE.stageSal);
+  stage.appendChild(STATE.stagePath);
 
-  // Keep the iframe scaled so 1280px-wide pages fill the stage box exactly.
-  // ResizeObserver fires whenever the stage box is resized (layout / window).
+  // Apply the run's viewport to the stage as CSS vars, so aspect-ratio +
+  // frame-layer width/height all derive from manifest.viewport rather than
+  // a hardcoded 1280×800. Defaults to landscape if the manifest is older.
+  const [vw, vh] = STATE.manifest?.viewport && STATE.manifest.viewport.length === 2
+    ? STATE.manifest.viewport
+    : [1280, 800];
+  stage.style.setProperty("--vw", `${vw}`);
+  stage.style.setProperty("--vh", `${vh}`);
+  // The frame-layer needs px units, not bare numbers, for width/height.
+  STATE.stageFrame.style.width = `${vw}px`;
+  STATE.stageFrame.style.height = `${vh}px`;
+
   if (STATE.stageRO) { STATE.stageRO.disconnect(); }
   STATE.stageRO = new ResizeObserver(entries => {
     for (const e of entries) {
       const w = e.contentRect.width;
-      if (w > 0) STATE.stageFrame.style.transform = `scale(${w / 1280})`;
+      if (w > 0) STATE.stageFrame.style.transform = `scale(${w / vw})`;
     }
   });
   STATE.stageRO.observe(stage);
@@ -854,10 +724,8 @@ function buildStageShell(gen) {
   const empty = el("div", { class: "empty-layer", id: "stage-empty", style: "display:none" }, "no frame captured");
   stage.appendChild(empty);
 
-  // bar under the stage
   const bar = el("div", { class: "stage-bar" });
 
-  // sibling dots
   const dots = el("div", { class: "sib-dots", id: "sib-dots" });
   gen.candidates.forEach((c, i) => {
     const d = el("div", {
@@ -870,7 +738,6 @@ function buildStageShell(gen) {
   dots.appendChild(el("span", { class: "count", id: "sib-count" }));
   bar.appendChild(dots);
 
-  // auto-play (only meaningful with siblings)
   if (gen.candidates.length > 1) {
     const play = el("button", { class: "play-btn", id: "play-btn" }, "▶ play");
     play.addEventListener("click", togglePlay);
@@ -879,9 +746,8 @@ function buildStageShell(gen) {
 
   bar.appendChild(el("div", { class: "spacer" }));
 
-  // saliency yes/no toggle
   if (gen.candidates.some(c => c.saliency)) {
-    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze saliency heatmap" },
+    const toggle = el("div", { class: `toggle ${STATE.showSaliency ? "on" : ""}`, id: "saliency-toggle", title: "show DeepGaze heatmap + 1→2→…→N predicted gaze path" },
       el("span", null, "saliency"),
       el("span", { class: "label-no" }, "no"),
       el("div", { class: "switch" }),
@@ -891,13 +757,12 @@ function buildStageShell(gen) {
     bar.appendChild(toggle);
   }
 
-  // initial paint
   setTimeout(() => paintStage(gen, /*animate=*/false), 0);
 
   return el("div", null, stage, bar);
 }
 
-/* Mutate the existing stage to show candidate at STATE.candIndex. */
+/* Repaint the iframe + saliency overlay for the candidate currently on stage. */
 function paintStage(gen, animate = true) {
   const cand = gen.candidates[STATE.candIndex];
   if (!cand) return;
@@ -905,14 +770,11 @@ function paintStage(gen, animate = true) {
   const haveHtml = !!cand.html;
   emptyEl.style.display = haveHtml ? "none" : "grid";
 
-  // Live iframe layer. Setting src on every flip restarts the page's
-  // entrance animation — exactly what we want users to see. When the
-  // saliency overlay is on we keep the iframe in place (animations still
-  // running underneath) but the heatmap covers it.
   const frame = STATE.stageFrame;
   if (haveHtml) {
-    // Force a reload even when flipping to the same src (e.g. user nudges
-    // to the same candidate) so the animation always restarts cleanly.
+    // Force a reload so the candidate's entrance animation restarts cleanly
+    // every time we flip to it. The saliency overlay (if on) sits on top
+    // and stays visible while this animation plays underneath.
     frame.src = "about:blank";
     requestAnimationFrame(() => { frame.src = cand.html; });
     frame.classList.add("active");
@@ -925,16 +787,8 @@ function paintStage(gen, animate = true) {
     requestAnimationFrame(() => { frame.style.transition = ""; });
   }
 
-  // Saliency overlay layer — toggled by the YES/NO control under the stage.
-  if (cand.saliency) {
-    STATE.stageSal.src = cand.saliency;
-    STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
-  } else {
-    STATE.stageSal.classList.remove("active");
-    STATE.stageSal.removeAttribute("src");
-  }
+  paintSaliency();
 
-  // badge: "cand-XX · winner" / "cand-XX"
   const badge = document.getElementById("stage-badge");
   if (badge) {
     badge.innerHTML = "";
@@ -944,7 +798,6 @@ function paintStage(gen, animate = true) {
     }
   }
 
-  // sibling indicator dots + count
   const dotsRoot = document.getElementById("sib-dots");
   if (dotsRoot) {
     const dots = dotsRoot.querySelectorAll(".dot");
@@ -954,25 +807,82 @@ function paintStage(gen, animate = true) {
   }
 }
 
-/* Repaint the info column (gen score, hypothesis, what-changed). Cheap full redraw. */
+/* Update the saliency overlay layer + the 1→2→…→N scanpath layer.
+   Does NOT touch the iframe so we never restart a running animation
+   just to flip the heatmap on/off. */
+function paintSaliency() {
+  const cand = currentCand();
+  // --- heatmap layer
+  if (STATE.stageSal) {
+    if (cand?.saliency) {
+      if (STATE.stageSal.getAttribute("src") !== cand.saliency) {
+        STATE.stageSal.src = cand.saliency;
+      }
+      STATE.stageSal.classList.toggle("active", !!STATE.showSaliency);
+    } else {
+      STATE.stageSal.classList.remove("active");
+      STATE.stageSal.removeAttribute("src");
+    }
+  }
+  // --- scanpath layer (numbered fixation order)
+  renderScanpath(cand);
+}
+
+/* Draw the predicted gaze path as numbered dots connected by a dashed
+   line. Coords come from saliency.details.scanpath_norm — each entry is
+   [x, y] in [0, 1] relative to the scored frame. Missing data (older
+   runs that pre-date the scanpath_norm field) → empty layer, the heatmap
+   alone still shows. Visibility tracks STATE.showSaliency. */
+function renderScanpath(cand) {
+  const layer = STATE.stagePath;
+  if (!layer) return;
+  const path = cand?.details?.saliency?.details?.scanpath_norm;
+  layer.innerHTML = "";
+  if (!path || !path.length) {
+    layer.classList.remove("active");
+    return;
+  }
+  // Connecting saccade polyline. percent coords inside a 0–100 viewBox so
+  // it stretches with the stage exactly the way the heatmap does.
+  const pts = path.map(([x, y]) => `${(x * 100).toFixed(2)},${(y * 100).toFixed(2)}`).join(" ");
+  const svgNs = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNs, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  const line = document.createElementNS(svgNs, "polyline");
+  line.setAttribute("points", pts);
+  line.setAttribute("class", "sp-line");
+  // viewBox is non-square stretched, so the dash pattern stays
+  // visually consistent if we use a small absolute width.
+  line.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.appendChild(line);
+  layer.appendChild(svg);
+  // Numbered dots on top of the line.
+  path.forEach(([x, y], i) => {
+    const dot = el("div", {
+      class: `sp-dot ${i === 0 ? "first" : ""}`,
+      style: `left:${(x * 100).toFixed(2)}%;top:${(y * 100).toFixed(2)}%`,
+      title: `fixation ${i + 1}`,
+    }, String(i + 1));
+    layer.appendChild(dot);
+  });
+  layer.classList.toggle("active", !!STATE.showSaliency);
+}
+
 function paintInfo(gen) {
-  const m = STATE.manifest;
   const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
   const cand = currentCand();
   const winner = winnerOf(gen);
   const prevWinner = prevGen ? winnerOf(prevGen) : null;
   const isMulti = gen.candidates.length > 1;
 
-  // For fan-out gens we show TWO numbers: the candidate on stage, and (smaller) the gen winner.
   const showScore = cand?.combined;
   const winnerScore = winner?.combined;
   const delta = (showScore != null && prevWinner?.combined != null) ? showScore - prevWinner.combined : null;
 
   const info = document.getElementById("evo-info");
   info.innerHTML = "";
-  info.appendChild(el("h1", { class: "display" }, "AutoDesign."));
-  info.appendChild(el("p", { class: "body-lead" }, "relentlessly refined."));
-  info.appendChild(el("div", { class: "gen-label", style: "margin-top:40px" }, gen.id.toUpperCase() + (isMulti ? ` · ${cand?.id ?? ""}` : "")));
+  info.appendChild(el("div", { class: "gen-label" }, gen.id.toUpperCase() + (isMulti ? ` · ${cand?.id ?? ""}` : "")));
   info.appendChild(el("div", { class: "gen-score" },
     showScore != null ? showScore.toFixed(2) : "—",
     el("sup", null, "/ 10"),
@@ -988,7 +898,6 @@ function paintInfo(gen) {
   }
 }
 
-/* Repaint the criterion strip for the candidate currently on stage. */
 function paintCriteria(gen) {
   const prevGen = STATE.scrubIndex > 0 ? STATE.manifest.generations[STATE.scrubIndex - 1] : null;
   const prevCand = prevGen ? winnerOf(prevGen) : null;
@@ -1003,37 +912,41 @@ function paintCriteria(gen) {
     const d = (c.score != null && prev != null) ? c.score - prev : null;
     const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
     const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
-    // Plain-English explanation from the signal, if it provided one.
     const why = explanationFor(cand, c);
+    // Source label intentionally omitted — the dashboard now presents one
+    // flat rubric, not a saliency-vs-vlm_judge split. Whatever computes
+    // each row is an engine detail, not user-facing UX.
     host.appendChild(el("div", { class: "crit" },
       el("div", { class: "k" }, prettyKey(c.key)),
       el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
       el("div", { class: `d delta ${dcls}` }, dtxt),
-      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
       why ? el("div", { class: "why" }, why) : null,
     ));
   }
 }
 
-/* Read a per-subscore explanation from the candidate's raw signal details.
-   Returns null if the signal didn't emit one (e.g. legacy runs). */
 function explanationFor(cand, c) {
   const det = cand?.details?.[c.source]?.details;
   if (!det) return null;
+  // saliency subscores expose a per-key explanation
   const ex = det.explanations;
   if (ex && typeof ex[c.key] === "string") return ex[c.key];
-  // VLM judge: the per-principle `reason` is its plain-English explanation.
+  // vlm_judge principles carry a per-principle `reason`
   const pp = det.per_principle;
   if (pp && pp[c.key] && typeof pp[c.key].reason === "string") return pp[c.key].reason;
-  // Nemotron signals carry their own narrative fields.
+  // the newer top-level criteria each narrate themselves (what was graded + why)
+  if (c.source === "prompt_consistency") {
+    if (det.rationale) return det.rationale;
+    const miss = det.missing || [];
+    if (miss.length) return `${(det.matched || []).length} requirements met; missing: ${miss[0]}`;
+    return null;
+  }
   if (c.source === "stress_test") {
-    if (det.consistency_notes || det.function_notes) return det.consistency_notes || det.function_notes;
+    if (det.function_notes || det.consistency_notes) return det.function_notes || det.consistency_notes;
     const i0 = det.issues && det.issues[0];
     if (i0) return typeof i0 === "string" ? i0 : (i0.description || null);  // issues may be strings OR {severity, description}
     return null;
   }
-  if (c.source === "prompt_consistency")
-    return det.rationale || (det.missing && det.missing.length ? "Missing: " + det.missing[0] : null);
   if (c.source === "brain_judge") {
     const p = det.p_good;
     if (typeof p === "number")
@@ -1043,33 +956,11 @@ function explanationFor(cand, c) {
   return null;
 }
 
-// --- helpers shared by the per-signal metrics sections -----------------
-/** A signal's free-form `details` object for a candidate, or null. */
-function signalDet(cand, key) { return cand?.details?.[key]?.details || null; }
-/** True if ANY candidate in the run carries details for this signal. */
-function signalActiveAnywhere(gens, key) {
-  return gens.some(g => g.candidates.some(c => signalDet(c, key)));
-}
-/** A criterion's score on the 0–10 scale (per_criterion is 0–10; flat criteria are 0–1). */
-function critScore10(cand, key) {
-  if (cand?.per_criterion && typeof cand.per_criterion[key] === "number") return cand.per_criterion[key];
-  const c = (cand?.criteria || []).find(x => x.key === key);
-  return (c && typeof c.score === "number") ? c.score * 10 : null;
-}
-/** A `<span class="score">N.NN /10</span>` node (or em-dash when missing). */
-function scoreSpan(v) {
-  const s = el("span", { class: "score" });
-  if (v == null) { s.append("—"); } else { s.append(v.toFixed(2)); s.appendChild(el("sup", null, "/10")); }
-  return s;
-}
-
-/* Current candidate on the stage. */
 function currentCand() {
   const gen = STATE.manifest.generations[STATE.scrubIndex];
   return gen.candidates[STATE.candIndex];
 }
 
-/* Flip to a specific sibling by index (clamped). Animates the crossfade. */
 function setCand(i) {
   const gen = STATE.manifest.generations[STATE.scrubIndex];
   const n = gen.candidates.length;
@@ -1080,16 +971,16 @@ function setCand(i) {
 }
 function stepCand(d) { setCand(STATE.candIndex + d); }
 
-/* Saliency yes/no. */
+/* Saliency yes/no. The toggle is sticky: it stays in whichever state the
+   user put it in across candidate flips, gen scrubs, and run switches. */
 function setShowSaliency(v) {
   STATE.showSaliency = !!v;
   const t = document.getElementById("saliency-toggle");
   if (t) t.classList.toggle("on", STATE.showSaliency);
-  const gen = STATE.manifest.generations[STATE.scrubIndex];
-  paintStage(gen, /*animate=*/false);
+  // Don't touch the iframe — only the overlay layer toggles.
+  paintSaliency();
 }
 
-/* Auto-cycle through siblings. */
 function togglePlay() {
   if (STATE.playTimer) { stopPlay(); return; }
   const btn = document.getElementById("play-btn");
@@ -1114,17 +1005,6 @@ function deltaClass(d) {
   return d > 0 ? "pos" : "neg";
 }
 
-function renderChangedNote(manifest, gen) {
-  const linRec = (manifest.lineage || []).find(r => `gen-${String(r.generation).padStart(3, "0")}` === gen.id);
-  if (!linRec) return null;
-  const changed = linRec.changed;
-  if (!changed) return null;
-  return el("p", { class: "gen-changed" },
-    el("strong", null, "what changed: "),
-    changed,
-  );
-}
-
 function renderScrubber(gens) {
   const combined = combinedSeries(gens);
   const best = bestIndex(gens);
@@ -1133,7 +1013,6 @@ function renderScrubber(gens) {
   const sc = el("div", { class: "scrubber" });
   sc.appendChild(el("div", { class: "track" }));
 
-  // ticks
   const pct = i => n === 1 ? 50 : (i / (n - 1)) * 100;
   const progress = el("div", { class: "progress", style: `width:${pct(STATE.scrubIndex)}%` });
   sc.appendChild(progress);
@@ -1145,10 +1024,9 @@ function renderScrubber(gens) {
       style: `left:${pct(i)}%`,
       on: { click: () => {
         STATE.scrubIndex = i;
-        // Reset candidate to the winner of the new gen, drop saliency overlay, stop autoplay.
         const newGen = STATE.manifest.generations[i];
         STATE.candIndex = Math.max(0, newGen.candidates.findIndex(c => c.id === newGen.winner));
-        STATE.showSaliency = false;
+        // NOTE: do NOT reset STATE.showSaliency — the toggle is sticky.
         renderEvolution();
       } },
     },
@@ -1168,28 +1046,6 @@ function renderScrubber(gens) {
   return wrap;
 }
 
-function renderCriterionStrip(gen, prevWinner) {
-  const w = winnerOf(gen);
-  const wrap = el("div", { class: "criteria" });
-  if (!w || !w.criteria || w.criteria.length === 0) return wrap;
-  const prevByKey = Object.fromEntries((prevWinner?.criteria || []).map(c => [c.key, c.score]));
-  for (const c of w.criteria) {
-    const prev = prevByKey[c.key];
-    const d = (c.score != null && prev != null) ? c.score - prev : null;
-    const dtxt = d == null ? "" : (Math.abs(d) < 0.005 ? "±.00" : (d > 0 ? `+${d.toFixed(2)}` : d.toFixed(2)));
-    const dcls = d == null ? "flat" : (Math.abs(d) < 0.005 ? "flat" : (d > 0 ? "pos" : "neg"));
-    wrap.appendChild(el("div", { class: "crit" },
-      el("div", { class: "k" }, prettyKey(c.key)),
-      el("div", { class: "v" }, c.score != null ? c.score.toFixed(2) : "—"),
-      el("div", { class: `d delta ${dcls}` }, dtxt),
-      el("div", { class: "src" }, c.source && c.source !== c.key ? "from " + c.source : ""),
-    ));
-  }
-  return wrap;
-}
-
-// (siblings drawer removed — inline dots + arrows + auto-play on the stage handle this now.)
-
 // ============================================================
 // rendering — metrics page
 // ============================================================
@@ -1199,14 +1055,6 @@ function renderMetrics() {
   const main = document.getElementById("main");
   main.innerHTML = "";
 
-  main.appendChild(el("section", { class: "metrics-head" },
-    el("div", { class: "eyebrow" }, m.brief || "AutoDesign run"),
-    el("h1", { class: "display" }, "the loop, in numbers."),
-    el("p", { class: "body-lead" },
-      "Every criterion plotted across generations. Sub-scores are 0–1; combined is 0–10. A green dot marks the best generation."),
-  ));
-
-  // ---- combined chart (big)
   const combined = combinedSeries(gens);
   const cur = combined[combined.length - 1];
   const prev = combined.length > 1 ? combined[combined.length - 2] : null;
@@ -1222,7 +1070,6 @@ function renderMetrics() {
     chartSVG(gens.map(g => g.id), combined, { maxY: 10, height: 260, fullLabels: true, markBest: true }),
   );
 
-  // ---- small multiples
   const keys = criterionKeys(gens);
   const smallMultiples = el("div", { class: "small-multiples" });
   for (const k of keys) {
@@ -1249,12 +1096,6 @@ function renderMetrics() {
       smallMultiples,
     ),
   ));
-
-  // ---- per-signal explainer sections: what each criterion grades & why
-  main.appendChild(renderVlmSection(gens));
-  const pc = renderPromptConsistencySection(gens); if (pc) main.appendChild(pc);
-  const st = renderStressTestSection(gens); if (st) main.appendChild(st);
-  main.appendChild(renderBrainJudgeSection(gens));  // always shown — explains what it grades on
 }
 
 function chartSVG(labels, values, opts) {
@@ -1265,7 +1106,6 @@ function chartSVG(labels, values, opts) {
   const ys = values.map(v => pad.t + (height - pad.t - pad.b) * (1 - ((v ?? 0) / maxY)));
   const svg = svgNode("svg", { viewBox: `0 0 ${w} ${height}`, preserveAspectRatio: "none" });
 
-  // y grid
   const ticks = maxY === 1 ? [0, 0.25, 0.5, 0.75, 1] : [0, 2, 4, 6, 8, 10];
   for (const t of ticks) {
     const y = pad.t + (height - pad.t - pad.b) * (1 - t / maxY);
@@ -1280,7 +1120,6 @@ function chartSVG(labels, values, opts) {
     svg.appendChild(lbl);
   }
 
-  // area + line
   if (values.some(v => v != null)) {
     const pts = xs.map((x, i) => `${x},${ys[i]}`).join(" ");
     const area = svgNode("polygon", {
@@ -1292,11 +1131,9 @@ function chartSVG(labels, values, opts) {
     svg.appendChild(line);
   }
 
-  // best index (for combined chart marker)
   let best = -1, bv = -Infinity;
   if (markBest) values.forEach((v, i) => { if (v != null && v > bv) { bv = v; best = i; } });
 
-  // dots
   values.forEach((v, i) => {
     if (v == null) return;
     svg.appendChild(svgNode("circle", {
@@ -1310,7 +1147,6 @@ function chartSVG(labels, values, opts) {
     }
   });
 
-  // x labels
   labels.forEach((lab, i) => {
     const t = svgNode("text", { x: xs[i], y: height - 10, "text-anchor": "middle", class: "axis-tick" });
     t.textContent = lab.replace(/^gen-0*/, "gen ");
@@ -1318,222 +1154,6 @@ function chartSVG(labels, values, opts) {
   });
 
   return svg;
-}
-
-function renderVlmSection(gens) {
-  // Read the VLM judge's own output (critique + pinpointed issues) for a winner.
-  // It lives under raw.vlm_judge.details, NOT the candidate-level critique
-  // (which the loop reserves for the critic agent).
-  const vlmOf = w => w?.details?.vlm_judge?.details || null;
-  const anyJudged = gens.some(g => vlmOf(winnerOf(g)));
-
-  const wrap = el("section", { class: "vlm-section" },
-    el("div", { class: "head" },
-      el("h3", null, "VLM judge"),
-      el("span", { class: "badge" }, anyJudged ? "per-generation feedback" : "not yet run"),
-    ),
-    el("p", { class: "body-lead", style: "margin-top:0" },
-      anyJudged
-        ? "Each generation’s winner, as the vision judge saw it: its two-sentence verdict and the specific, located issues the next round should fix (worst first)."
-        : "When the VLM judge signal runs, each generation’s winner will get a verdict here alongside its pinpointed issues."),
-  );
-  const list = el("div", { class: "vlm-list" });
-  for (const g of gens) {
-    const w = winnerOf(g);
-    const vlm = vlmOf(w);
-    const card = el("div", { class: "vlm-card" }, el("div", { class: "gen" }, g.id));
-
-    if (!vlm) {
-      card.appendChild(el("div", { class: "feedback" },
-        w?.combined != null ? `awaiting judge — placed at ${w.combined.toFixed(2)} / 10` : "awaiting judge"));
-      list.appendChild(card);
-      continue;
-    }
-
-    if (vlm.critique) card.appendChild(el("div", { class: "feedback" }, "“" + vlm.critique + "”"));
-
-    const issues = Array.isArray(vlm.issues) ? vlm.issues : [];
-    if (issues.length) {
-      card.appendChild(el("div", { class: "issues-label" }, `${issues.length} issue${issues.length > 1 ? "s" : ""} to fix`));
-      for (const it of issues) {
-        const sev = (it.severity || "medium").toLowerCase();
-        const issueEl = el("div", { class: `vlm-issue sev-${sev}` });
-        issueEl.appendChild(el("div", { class: "where" },
-          it.where || "(unspecified)",
-          el("span", { class: "sev" }, sev),
-        ));
-        if (it.problem) issueEl.appendChild(el("div", { class: "problem" }, it.problem));
-        if (it.fix) issueEl.appendChild(el("div", { class: "fix" }, it.fix));
-        card.appendChild(issueEl);
-      }
-    } else if (vlm.critique) {
-      card.appendChild(el("div", { class: "issues-label" }, "no issues flagged"));
-    }
-    list.appendChild(card);
-  }
-  wrap.appendChild(list);
-  return wrap;
-}
-
-// ------------------------------------------------------------
-// per-signal explainer sections (one per newer criterion)
-// Each answers two questions for the user: WHAT is this criterion
-// grading, and WHY did each generation get the score it got.
-// ------------------------------------------------------------
-
-/* prompt_consistency — Nemotron text check of the build vs the brief. */
-function renderPromptConsistencySection(gens) {
-  if (!signalActiveAnywhere(gens, "prompt_consistency")) return null;
-  const wrap = el("section", { class: "signal-section" },
-    el("div", { class: "head" },
-      el("h3", null, "Brief adherence"),
-      el("span", { class: "badge live" }, "Nemotron · text check")),
-    el("p", { class: "signal-lead" },
-      "Does the build actually contain everything the brief asked for? A Nemotron model reads the generated page against the prompt and itemises what's present, what's missing, and anything that contradicts the brief — independent of how it looks."),
-    el("p", { class: "signal-grades", html:
-      "<b>Grades on:</b> presence of every requested element &amp; feature (content, not visuals). Each requirement is checked off, flagged missing, or flagged as a contradiction." }),
-  );
-  const list = el("div", { class: "gen-cards" });
-  const group = (cls, mark, label, items) => {
-    if (!items || !items.length) return null;
-    const reqs = el("div", { class: "reqs" });
-    items.forEach(r => reqs.appendChild(el("div", { class: `req ${cls}` }, el("span", { class: "mark" }, mark), el("span", null, r))));
-    return el("div", null, el("div", { class: "req-group-label" }, `${label} · ${items.length}`), reqs);
-  };
-  for (const g of gens) {
-    const w = winnerOf(g);
-    const det = signalDet(w, "prompt_consistency");
-    const card = el("div", { class: "gen-card" },
-      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "prompt_consistency"))));
-    if (!det) {
-      card.appendChild(el("div", { class: "empty-inline" }, "not scored in this run"));
-    } else {
-      [group("met", "✓", "met", det.matched),
-       group("miss", "✗", "missing", det.missing),
-       group("contra", "⚠", "contradictions", det.contradictions)].forEach(n => n && card.appendChild(n));
-      if (det.rationale) card.appendChild(el("div", { class: "rationale" }, "“" + det.rationale + "”"));
-    }
-    list.appendChild(card);
-  }
-  wrap.appendChild(list);
-  return wrap;
-}
-
-/* stress_test — agentic / heuristic interaction QA in a real browser. */
-function renderStressTestSection(gens) {
-  if (!signalActiveAnywhere(gens, "stress_test")) return null;
-  const wrap = el("section", { class: "signal-section" },
-    el("div", { class: "head" },
-      el("h3", null, "Interaction QA"),
-      el("span", { class: "badge live" }, "agentic stress test")),
-    el("p", { class: "signal-lead" },
-      "Do the buttons and links actually work? Persona agents (or a deterministic probe) drive the real page in a headless browser — clicking, typing, navigating — and report what's broken. Pure behaviour: it ignores looks and copy."),
-    el("p", { class: "signal-grades", html:
-      "<b>Grades on:</b> whether interactive elements respond and behave consistently — dead links, missing handlers, JS console errors, broken forms." }),
-  );
-  const list = el("div", { class: "gen-cards" });
-  for (const g of gens) {
-    const w = winnerOf(g);
-    const det = signalDet(w, "stress_test");
-    const card = el("div", { class: "gen-card" },
-      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "stress_test"))));
-    if (!det) { card.appendChild(el("div", { class: "empty-inline" }, "not scored in this run")); list.appendChild(card); continue; }
-
-    // heuristic-probe mode: a counts summary
-    const s = det.summary;
-    if (s && typeof s === "object") {
-      const chips = el("div", { class: "stat-chips" });
-      const add = (label, val, warn) => { if (val == null) return; chips.appendChild(el("div", { class: `stat-chip ${warn ? "warn" : ""}` }, label + " ", el("strong", null, String(val)))); };
-      add("interactive", s.n_interactive);
-      add("dead", s.n_dead, s.n_dead > 0);
-      add("clicked", s.n_clicked);
-      add("console errors", s.n_with_console_errors, s.n_with_console_errors > 0);
-      if (chips.childNodes.length) card.appendChild(chips);
-    }
-
-    // subagent mode: one row per persona
-    if (Array.isArray(det.personas)) {
-      det.personas.forEach(p => {
-        const ok = p.goal_achieved ? "ok" : "fail";
-        const row = el("div", { class: `persona ${ok}` },
-          el("div", null,
-            el("span", { class: "pname" }, p.persona || p.name || "persona"),
-            el("span", { class: "pgoal-met" }, p.goal_achieved ? "goal met" : "goal failed")));
-        if (p.summary) row.appendChild(el("div", { class: "psum" }, p.summary));
-        card.appendChild(row);
-      });
-    }
-
-    // issues — may be plain strings OR {severity, description}
-    const issues = Array.isArray(det.issues) ? det.issues : [];
-    if (issues.length) {
-      card.appendChild(el("div", { class: "req-group-label" }, `issues · ${issues.length}`));
-      issues.slice(0, 8).forEach(it => {
-        const obj = it && typeof it === "object";
-        const sev = ((obj ? it.severity : null) || "medium").toLowerCase();
-        const desc = obj ? (it.description || JSON.stringify(it)) : String(it);
-        card.appendChild(el("div", { class: `sig-issue sev-${sev}` },
-          el("span", { class: "sev" }, sev), el("span", { class: "desc" }, desc)));
-      });
-    }
-
-    if (det.function_notes) card.appendChild(el("div", { class: "note-block" }, el("span", { class: "lbl" }, "function"), det.function_notes));
-    if (det.consistency_notes) card.appendChild(el("div", { class: "note-block" }, el("span", { class: "lbl" }, "consistency"), det.consistency_notes));
-    list.appendChild(card);
-  }
-  wrap.appendChild(list);
-  return wrap;
-}
-
-/* brain_judge — the perceptual "design classifier". Always rendered (even with
-   no data yet) so the user can see what it grades on now that it's enabled. */
-function renderBrainJudgeSection(gens) {
-  const active = signalActiveAnywhere(gens, "brain_judge");
-  const wrap = el("section", { class: "signal-section" },
-    el("div", { class: "head" },
-      el("h3", null, "Design classifier"),
-      el("span", { class: `badge ${active ? "live" : ""}` }, active ? "perceptual model" : "awaiting first run")),
-    el("p", { class: "signal-lead" },
-      "A classifier (RBF SVM, cross-validated AUC 0.85) trained on award-winning sites versus mass-produced AI slop. It reads the screenshot's perceptual fingerprint and returns the probability the design belongs with the good set."),
-    el("p", { class: "signal-grades", html:
-      "<b>Grades on:</b> perceptual design statistics — clutter, colour discipline, contrast, whitespace, symmetry, palette entropy. Despite the internal “brain” framing this is <b>not</b> real brain data; it's the swap-in seam for Meta's TRIBE-v2." }),
-  );
-
-  // What it looks at — a fixed legend of the perceptual features.
-  const FEATURES = [
-    ["edge density", "visual clutter"], ["contrast", "figure / ground"],
-    ["colourfulness", "palette intensity"], ["saturation", "colour discipline"],
-    ["whitespace", "breathing room"], ["hue entropy", "palette focus"],
-    ["symmetry", "layout regularity"], ["top contrast", "hero separation"],
-  ];
-  const fg = el("div", { class: "feature-grid" });
-  FEATURES.forEach(([k, v]) => fg.appendChild(el("div", { class: "f" }, el("span", null, k), el("span", { class: "fk" }, v))));
-  wrap.appendChild(fg);
-
-  const list = el("div", { class: "gen-cards", style: "margin-top:18px" });
-  let any = false;
-  for (const g of gens) {
-    const w = winnerOf(g);
-    const det = signalDet(w, "brain_judge");
-    if (!det) continue;
-    any = true;
-    const p = typeof det.p_good === "number" ? det.p_good : null;
-    const card = el("div", { class: "gen-card" },
-      el("div", { class: "gen-top" }, el("span", { class: "g" }, g.id), scoreSpan(critScore10(w, "brain_judge"))));
-    card.appendChild(el("div", { class: "pgood-bar" },
-      el("div", { class: "fill", style: `width:${p != null ? (p * 100).toFixed(1) : 0}%` }),
-      el("div", { class: "mid" }),
-      el("div", { class: "txt" }, p != null ? `P(good) ${(p * 100).toFixed(0)}%  ·  midline = 50/50` : "—")));
-    const backend = det.encoder_backend || "—";
-    const fallback = backend === "perceptual-fallback";
-    card.appendChild(el("div", { class: `backend-note ${fallback ? "fallback" : ""}` },
-      `backend: ${backend}${fallback ? "  (perceptual stand-in — no real brain model)" : ""}`));
-    list.appendChild(card);
-  }
-  if (!any) list.appendChild(el("div", { class: "empty-inline" },
-    "No generation has been scored by this classifier yet — it runs on the next /autodesign loop."));
-  wrap.appendChild(list);
-  return wrap;
 }
 
 // ============================================================
@@ -1572,10 +1192,10 @@ async function loadRun(rid) {
   STATE.runId = rid;
   const m = await jget(`/api/run/${rid}`);
   STATE.manifest = m;
-  STATE.scrubIndex = bestIndex(m.generations);  // start on the best gen
+  STATE.scrubIndex = bestIndex(m.generations);
   const bestGen = m.generations[STATE.scrubIndex];
   STATE.candIndex = Math.max(0, bestGen.candidates.findIndex(c => c.id === bestGen.winner));
-  STATE.showSaliency = false;
+  // NOTE: do NOT reset STATE.showSaliency — toggle is sticky across run switches too.
   const stat = document.getElementById("meta-stat");
   const wn = winnerOf(bestGen);
   stat.textContent = `${m.generations.length} gens · best ${bestGen.id} · ${wn?.combined?.toFixed(2) ?? "—"}`;

@@ -98,10 +98,14 @@ def test_weighted_combine_is_0_to_10_and_clamps():
     rub = load_rubric({"vlm_judge": {"weights": {k.key: 0.0 for k in DEFAULT_PRINCIPLES
                                                  if k.key not in ("visual_hierarchy", "typography")}}})
     score, per = _combine(rub, {"visual_hierarchy": {"score": 12}, "typography": {"score": 4}})
-    # visual_hierarchy clamps 12 -> 10; weights 1.2 and 1.0 -> (10*1.2 + 4*1.0)/2.2
+    # visual_hierarchy clamps 12 -> 10, then the two surviving principles combine by their
+    # rubric weights. Read the weights from the rubric instead of hardcoding them, so a
+    # reweight in _ui_rubric.py doesn't make this test stale.
+    w = {p.key: p.weight for p in DEFAULT_PRINCIPLES}
+    wv, wt = w["visual_hierarchy"], w["typography"]
     assert per["visual_hierarchy"]["score"] == 10.0
     assert 0.0 <= score <= 10.0
-    assert abs(score - (10 * 1.2 + 4 * 1.0) / 2.2) < 0.01  # _combine rounds to 2 dp
+    assert abs(score - (10 * wv + 4 * wt) / (wv + wt)) < 0.01  # _combine rounds to 2 dp
 
 
 # --------------------------------------------------------------- originality (references)

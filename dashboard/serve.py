@@ -54,7 +54,6 @@ from pipeline.artifacts import (
     WINNER_FILENAME,
 )
 
-
 HOST = "127.0.0.1"
 PORT = 8765
 ROOT = Path(__file__).resolve().parent
@@ -102,6 +101,7 @@ def _extract_hypothesis(html_path: Path) -> str | None:
     except OSError:
         return None
     import re
+
     m = re.search(r"<!--\s*(.*?)\s*-->", text, re.DOTALL)
     return m.group(1).strip() if m else None
 
@@ -130,12 +130,14 @@ def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
             for sub_key, sub_val in subs.items():
                 if sub_key == "total":
                     continue
-                out.append({
-                    "key": sub_key,
-                    "score": sub_val,  # already 0-1
-                    "weight": weights.get(sub_key),
-                    "source": source,
-                })
+                out.append(
+                    {
+                        "key": sub_key,
+                        "score": sub_val,  # already 0-1
+                        "weight": weights.get(sub_key),
+                        "source": source,
+                    }
+                )
             seen_sources.add(source)
         elif per_principle:
             for p_key, p_val in per_principle.items():
@@ -152,12 +154,14 @@ def _flat_criteria(raw: dict, per_criterion: dict) -> list[dict]:
     for k, v in per_criterion.items():
         if k in seen_sources:
             continue
-        out.append({
-            "key": k,
-            "score": (v / 10.0) if isinstance(v, (int, float)) else None,
-            "weight": None,
-            "source": k,
-        })
+        out.append(
+            {
+                "key": k,
+                "score": (v / 10.0) if isinstance(v, (int, float)) else None,
+                "weight": None,
+                "source": k,
+            }
+        )
     return out
 
 
@@ -225,28 +229,41 @@ def build_run_manifest(run_id: str, runs_root: Path = RUNS_ROOT) -> dict | None:
         return None
 
     generations: list[dict] = []
-    for gen_path in sorted(p for p in run_dir.iterdir() if p.is_dir() and p.name.startswith("gen-")):
+    for gen_path in sorted(
+        p for p in run_dir.iterdir() if p.is_dir() and p.name.startswith("gen-")
+    ):
         cand_dirs = sorted(
             p for p in gen_path.iterdir() if p.is_dir() and p.name.startswith("cand-")
         )
         candidates = [_candidate_manifest(c) for c in cand_dirs]
         winner_obj = _read_json(gen_path / WINNER_FILENAME) or {}
-        generations.append({
-            "id": gen_path.name,
-            "winner": winner_obj.get("winner"),
-            "winner_combined": winner_obj.get("combined"),
-            "candidates": candidates,
-        })
+        generations.append(
+            {
+                "id": gen_path.name,
+                "winner": winner_obj.get("winner"),
+                "winner_combined": winner_obj.get("combined"),
+                "candidates": candidates,
+            }
+        )
 
     lineage = _read_lineage(run_dir)
     brief_path = run_dir / "brief.txt"
-    brief = brief_path.read_text(encoding="utf-8").strip() if brief_path.exists() else ""
+    brief = (
+        brief_path.read_text(encoding="utf-8").strip() if brief_path.exists() else ""
+    )
     final_path = run_dir / "final.html"
     final_url = _url_for(final_path) if final_path.exists() else None
+
+    # Optional per-run config snapshot — currently carries the capture viewport so
+    # the dashboard can size the stage (mobile portrait vs. desktop landscape).
+    # Older runs without this file fall back to the default landscape size.
+    meta = _read_json(run_dir / "run_meta.json") or {}
+    viewport = meta.get("viewport") or [1280, 800]
 
     return {
         "run": run_id,
         "brief": brief,
+        "viewport": viewport,
         "lineage": lineage,
         "final": final_url,
         "generations": generations,
@@ -289,12 +306,16 @@ class Handler(BaseHTTPRequestHandler):
             self._file(ROOT / "dashboard.html", "text/html; charset=utf-8")
             return
 
+        if path == "/logo.png":
+            self._file(ROOT / "logo.png", "image/png")
+            return
+
         if path == "/api/runs":
             self._json({"runs": list_runs()})
             return
 
         if path.startswith("/api/run/"):
-            run_id = path[len("/api/run/"):].strip("/")
+            run_id = path[len("/api/run/") :].strip("/")
             manifest = build_run_manifest(run_id)
             if manifest is None:
                 self._json({"error": f"unknown run: {run_id}"}, status=404)
