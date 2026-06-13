@@ -101,20 +101,29 @@ def test_norm_issues_dicts_and_strings():
 # ----------------------------------------------------------------- scoring
 def test_persona_score_clean_success_is_high():
     r = _result("v", achieved=True, issues=[])
-    assert _persona_score(r) == 9.5
+    assert _persona_score(r) == 10.0  # goal achieved, no issues -> full marks
+
+
+def test_persona_score_single_issue_is_a_minor_ding():
+    # One issue should NOT crater the score — forgiving first issue (quadratic curve).
+    r = _result("v", achieved=True, issues=[{"severity": "high", "description": "dead CTA"}])
+    # base 10 - load(1.3)^2 = 10 - 1.69 = 8.31
+    assert _persona_score(r) == 8.31
 
 
 def test_persona_score_penalizes_issues_and_defects():
+    # Several real problems (issue + JS console error + dead clicks) compound -> genuinely bad.
     r = _result("v", achieved=True,
                 issues=[{"severity": "high", "description": "dead CTA"}],
                 session={"clicks": 4, "dead_clicks": 2, "console_errors": 1})
-    # base 7.0 - 2.5 (high) - 1.0 (2 dead*0.5) - 0.7 (1 console*0.7) = 2.8
-    assert _persona_score(r) == 2.8
+    # load = 1.3 (high) + 0.3*2 (dead) + 1.0 (console) = 2.9 ; base 10 - 2.9^2 = 10 - 8.41 = 1.59
+    assert _persona_score(r) == 1.59
 
 
 def test_persona_score_timeout_without_goal_is_capped():
+    # Not achieving a goal on a one-page demo isn't proof of breakage -> moderate, not near-zero.
     r = _result("v", achieved=False, issues=[], stopped="max_steps")
-    assert _persona_score(r) <= 3.0
+    assert _persona_score(r) <= 5.0
 
 
 def test_merge_averages_personas_and_collects_issues():
@@ -139,8 +148,20 @@ def test_heuristic_all_working():
     assert _heuristic_score(report) == 10.0
 
 
-def test_heuristic_all_dead():
+def test_heuristic_dead_placeholder_clicks_are_forgiven():
+    # A click with no observable effect is EXPECTED on a static landing-page demo (href="#"),
+    # so it must NOT crater the score — this was the bug that pinned 'function' near 0.
     report = InteractionReport(target="x", n_interactive=1, interactions=[
         Interaction(label="a", tag="button", selector="b", clicked=True, dead=True),
     ])
-    assert _heuristic_score(report) == 0.0
+    assert _heuristic_score(report) >= 9.0
+
+
+def test_heuristic_console_errors_score_low():
+    # Genuine breakage (JS console errors on click) IS penalized hard once there's more than one.
+    report = InteractionReport(target="x", n_interactive=2, interactions=[
+        Interaction(label="a", tag="button", selector="b", clicked=True, new_console_errors=["TypeError"]),
+        Interaction(label="b", tag="button", selector="c", clicked=True, new_console_errors=["ReferenceError"]),
+    ])
+    # load = 2 clicks-with-console-errors -> 2.0 ; 10 - 2^2 = 6.0
+    assert _heuristic_score(report) == 6.0

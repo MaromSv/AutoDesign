@@ -46,7 +46,20 @@ DEFAULT_PERSONAS: list[dict] = [
 ]
 
 # Per-persona severity penalties applied to its score.
-_SEVERITY_PENALTY = {"critical": 3.0, "high": 2.5, "medium": 1.2, "low": 0.4}
+# How much each issue contributes to the "load" that drives the penalty. Kept light: a
+# single issue should be a minor ding, not a catastrophe (see _penalty_from_load).
+_SEVERITY_WEIGHT = {"critical": 2.0, "high": 1.3, "medium": 0.7, "low": 0.3}
+
+
+def _penalty_from_load(load: float) -> float:
+    """Map a severity-weighted issue load to a 0-10 penalty on a forgiving, escalating curve.
+
+    Quadratic, so the FIRST issue barely dents the score but several compound fast — which is
+    the intent: one dead/placeholder control on a static demo is fine, a page riddled with
+    broken interactions or JS errors should score badly.
+        load 0 -> 0   load 1 -> 1   load 2 -> 4   load 3 -> 9   load>=3.16 -> capped at 10
+    """
+    return min(10.0, load * load)
 
 
 @register_signal
@@ -193,16 +206,21 @@ def _persona_score(r) -> float:
     issues = _norm_issues(f.get("issues"))
     sess = r.session or {}
 
-    base = 9.5 if (achieved and not issues) else (7.0 if achieved else 3.5)
-    # An agent that never finished (timed out / errored) without achieving the goal couldn't
-    # confirm the site works — cap it low.
+    # Innocent until proven broken. Achieving the goal is full marks before penalties; not
+    # achieving it on a one-page demo isn't proof of breakage (there may be nothing to "do"),
+    # so it's a moderate base, not near-zero.
+    base = 10.0 if achieved else 6.0
     if r.stopped in ("max_steps", "error") and not achieved:
-        base = min(base, 3.0)
+        base = min(base, 5.0)
 
-    penalty = sum(_SEVERITY_PENALTY.get(it["severity"], 1.2) for it in issues)
-    penalty += min(2.0, 0.5 * int(sess.get("dead_clicks", 0)))
-    penalty += min(2.0, 0.7 * int(sess.get("console_errors", 0)))
-    return round(max(0.0, min(10.0, base - penalty)), 2)
+    # Severity-weighted issue load. Dead/placeholder clicks are EXPECTED on a static landing
+    # demo (CTAs with href="#"), so they're downweighted and capped; JS console errors are
+    # real defects and count fully. The quadratic curve makes one issue a minor ding and
+    # several genuinely bad.
+    load = sum(_SEVERITY_WEIGHT.get(it["severity"], 0.7) for it in issues)
+    load += 0.3 * min(int(sess.get("dead_clicks", 0)), 4)
+    load += 1.0 * int(sess.get("console_errors", 0))
+    return round(max(0.0, min(10.0, base - _penalty_from_load(load))), 2)
 
 
 def _norm_issues(v) -> list[dict]:
@@ -215,7 +233,7 @@ def _norm_issues(v) -> list[dict]:
             desc = str(it.get("description") or it.get("issue") or "").strip()
             if desc:
                 sev = str(it.get("severity", "medium")).strip().lower()
-                out.append({"severity": sev if sev in _SEVERITY_PENALTY else "medium",
+                out.append({"severity": sev if sev in _SEVERITY_WEIGHT else "medium",
                             "description": desc})
         elif str(it).strip():
             out.append({"severity": "medium", "description": str(it).strip()})
@@ -250,15 +268,19 @@ def _interaction_dict(i) -> dict:
 
 
 def _heuristic_score(report: InteractionReport) -> float:
-    """Working fraction of clicked controls, penalized for JS/console errors. 0-10."""
+    """Behavioral health of the page's controls, 0-10. Innocent until proven broken.
+
+    A click that produces "no observable effect" is NOT treated as a failure — on a static
+    landing-page demo, placeholder CTAs (href="#") are expected, and penalizing them dragged
+    every candidate to ~0. The real defects are controls that throw and JavaScript console
+    errors. Dead/placeholder clicks contribute only a small, capped amount, so a page is only
+    badly scored when it's actually riddled with broken behavior (quadratic load curve).
+    """
     s = report.summary()
-    clicked = s["n_clicked"]
-    if clicked == 0:
-        return 0.0
-    working = clicked - s["n_dead"]
-    base = 10.0 * working / clicked
-    defects = s["n_errored"] + s["n_with_console_errors"]
-    penalty = min(base, 1.5 * defects)
-    if s["n_load_console_errors"]:
-        penalty += min(2.0, 0.5 * s["n_load_console_errors"])
-    return round(max(0.0, base - penalty), 2)
+    if s["n_clicked"] == 0:
+        return 7.0  # nothing exercised -> neutral, not a failure
+    load = 1.0 * s["n_errored"]                       # controls that threw on click — real
+    load += 1.0 * s["n_with_console_errors"]          # clicks that emitted JS console errors
+    load += 0.5 * s["n_load_console_errors"]          # errors already present on load
+    load += 0.3 * min(s["n_dead"], 4)                 # placeholder/no-effect clicks — mild, capped
+    return round(max(0.0, 10.0 - _penalty_from_load(load)), 2)
